@@ -29,6 +29,20 @@ import androidclient.feature.loan.generated.resources.feature_loan_review_paymen
 import androidclient.feature.loan.generated.resources.feature_loan_select_date
 import androidclient.feature.loan.generated.resources.feature_loan_sync_previous_transaction
 import androidclient.feature.loan.generated.resources.feature_loan_total
+import androidclient.feature.loan.generated.resources.feature_loan_transaction_breakdown
+import androidclient.feature.loan.generated.resources.feature_loan_principal
+import androidclient.feature.loan.generated.resources.feature_loan_interest
+import androidclient.feature.loan.generated.resources.feature_loan_fees
+import androidclient.feature.loan.generated.resources.feature_loan_penalties
+import androidclient.feature.loan.generated.resources.feature_loan_show_payment_details
+import androidclient.feature.loan.generated.resources.feature_loan_external_id_field
+import androidclient.feature.loan.generated.resources.feature_loan_cheque_number
+import androidclient.feature.loan.generated.resources.feature_loan_routing_code
+import androidclient.feature.loan.generated.resources.feature_loan_receipt_number
+import androidclient.feature.loan.generated.resources.feature_loan_bank_number
+import androidclient.feature.loan.generated.resources.feature_loan_note
+import androidclient.feature.loan.generated.resources.feature_loan_waive_penalties
+import androidclient.feature.loan.generated.resources.feature_loan_no_penalties_found
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,6 +89,8 @@ import com.mifos.core.designsystem.component.MifosOutlinedTextField
 import com.mifos.core.designsystem.component.MifosScaffold
 import com.mifos.core.designsystem.component.MifosSweetError
 import com.mifos.core.designsystem.component.MifosTextFieldDropdown
+import com.mifos.core.common.utils.CurrencyFormatter
+import com.mifos.core.ui.components.MifosCheckBox
 import com.mifos.core.ui.components.MifosProgressIndicator
 import com.mifos.room.entities.PaymentTypeOptionEntity
 import com.mifos.room.entities.accounts.loans.LoanRepaymentRequestEntity
@@ -234,6 +250,17 @@ private fun LoanRepaymentContent(
     var fees by rememberSaveable { mutableStateOf("") }
     var paymentTypeId by rememberSaveable { mutableIntStateOf(0) }
 
+    // Payment details toggle and fields
+    var showPaymentDetails by rememberSaveable { mutableStateOf(false) }
+    var accountNumber by rememberSaveable { mutableStateOf("") }
+    var externalId by rememberSaveable { mutableStateOf("") }
+    var chequeNumber by rememberSaveable { mutableStateOf("") }
+    var routingCode by rememberSaveable { mutableStateOf("") }
+    var receiptNumber by rememberSaveable { mutableStateOf("") }
+    var bankNumber by rememberSaveable { mutableStateOf("") }
+    var note by rememberSaveable { mutableStateOf("") }
+    var waivePenalties by rememberSaveable { mutableStateOf(false) }
+
     var repaymentDate by rememberSaveable { mutableLongStateOf(Clock.System.now().toEpochMilliseconds()) }
     var showDatePickerDialog by rememberSaveable { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(
@@ -263,7 +290,17 @@ private fun LoanRepaymentContent(
                 fees = fees,
                 amount = amount,
                 additionalPayment = additionalPayment,
+                penaltyChargesPortion = loanRepaymentTemplate.penaltyChargesPortion ?: 0.0,
+                waivePenalties = waivePenalties,
             ).toString(),
+            accountNumber = accountNumber,
+            externalId = externalId,
+            chequeNumber = chequeNumber,
+            routingCode = routingCode,
+            receiptNumber = receiptNumber,
+            bankNumber = bankNumber,
+            note = note,
+            waivePenalties = waivePenalties,
             submitPayment = submitPayment,
         )
     }
@@ -314,11 +351,62 @@ private fun LoanRepaymentContent(
         FarApartTextItem(title = loanProductName, value = loanId.toString())
         FarApartTextItem(
             title = stringResource(Res.string.feature_loan_loan_in_arrears),
-            value = amountInArrears?.toString() ?: "",
+            value = CurrencyFormatter.format(
+                amountInArrears,
+                loanRepaymentTemplate.currency?.code,
+                loanRepaymentTemplate.currency?.decimalPlaces,
+            ),
         )
         FarApartTextItem(
             title = stringResource(Res.string.feature_loan_loan_amount_due),
-            value = loanRepaymentTemplate.amount?.toString() ?: "",
+            value = CurrencyFormatter.format(
+                loanRepaymentTemplate.amount,
+                loanRepaymentTemplate.currency?.code,
+                loanRepaymentTemplate.currency?.decimalPlaces,
+            ),
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+
+        // Transaction Breakdown Section
+        Text(
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            text = stringResource(Res.string.feature_loan_transaction_breakdown),
+            modifier = Modifier.padding(top = 10.dp),
+        )
+
+        FarApartTextItem(
+            title = stringResource(Res.string.feature_loan_principal),
+            value = CurrencyFormatter.format(
+                loanRepaymentTemplate.principalPortion,
+                loanRepaymentTemplate.currency?.code,
+                loanRepaymentTemplate.currency?.decimalPlaces,
+            ),
+        )
+        FarApartTextItem(
+            title = stringResource(Res.string.feature_loan_interest),
+            value = CurrencyFormatter.format(
+                loanRepaymentTemplate.interestPortion,
+                loanRepaymentTemplate.currency?.code,
+                loanRepaymentTemplate.currency?.decimalPlaces,
+            ),
+        )
+        FarApartTextItem(
+            title = stringResource(Res.string.feature_loan_fees),
+            value = CurrencyFormatter.format(
+                loanRepaymentTemplate.feeChargesPortion,
+                loanRepaymentTemplate.currency?.code,
+                loanRepaymentTemplate.currency?.decimalPlaces,
+            ),
+        )
+        FarApartTextItem(
+            title = stringResource(Res.string.feature_loan_penalties),
+            value = CurrencyFormatter.format(
+                loanRepaymentTemplate.penaltyChargesPortion,
+                loanRepaymentTemplate.currency?.code,
+                loanRepaymentTemplate.currency?.decimalPlaces,
+            ),
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
@@ -395,12 +483,113 @@ private fun LoanRepaymentContent(
                 fees = fees,
                 amount = amount,
                 additionalPayment = additionalPayment,
+                penaltyChargesPortion = loanRepaymentTemplate.penaltyChargesPortion ?: 0.0,
+                waivePenalties = waivePenalties,
             ).toString(),
             onValueChange = { },
             label = stringResource(Res.string.feature_loan_total),
             error = null,
             readOnly = true,
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Show Payment Details Toggle
+        MifosCheckBox(
+            text = stringResource(Res.string.feature_loan_show_payment_details),
+            checked = showPaymentDetails,
+            onCheckChanged = { showPaymentDetails = it },
+        )
+
+        // Payment Details Fields (conditionally shown)
+        if (showPaymentDetails) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            MifosOutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = accountNumber,
+                onValueChange = { accountNumber = it },
+                label = stringResource(Res.string.feature_loan_account_number),
+                error = null,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            MifosOutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = externalId,
+                onValueChange = { externalId = it },
+                label = stringResource(Res.string.feature_loan_external_id_field),
+                error = null,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            MifosOutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = chequeNumber,
+                onValueChange = { chequeNumber = it },
+                label = stringResource(Res.string.feature_loan_cheque_number),
+                error = null,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            MifosOutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = routingCode,
+                onValueChange = { routingCode = it },
+                label = stringResource(Res.string.feature_loan_routing_code),
+                error = null,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            MifosOutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = receiptNumber,
+                onValueChange = { receiptNumber = it },
+                label = stringResource(Res.string.feature_loan_receipt_number),
+                error = null,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            MifosOutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = bankNumber,
+                onValueChange = { bankNumber = it },
+                label = stringResource(Res.string.feature_loan_bank_number),
+                error = null,
+            )
+        }
+
+        // Note Field
+        MifosOutlinedTextField(
+            modifier = Modifier.fillMaxWidth(),
+            value = note,
+            onValueChange = { note = it },
+            label = stringResource(Res.string.feature_loan_note),
+            error = null,
+            maxLines = 4,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Waive Penalties Section
+        if ((loanRepaymentTemplate.penaltyChargesPortion ?: 0.0) > 0.0) {
+            MifosCheckBox(
+                text = stringResource(Res.string.feature_loan_waive_penalties),
+                checked = waivePenalties,
+                onCheckChanged = { waivePenalties = it },
+            )
+        } else {
+            Text(
+                text = stringResource(Res.string.feature_loan_no_penalties_found),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -470,6 +659,14 @@ private fun ShowLoanRepaymentConfirmationDialog(
     additionalPayment: String,
     fees: String,
     total: String,
+    accountNumber: String,
+    externalId: String,
+    chequeNumber: String,
+    routingCode: String,
+    receiptNumber: String,
+    bankNumber: String,
+    note: String,
+    waivePenalties: Boolean,
     submitPayment: (request: LoanRepaymentRequestEntity) -> Unit,
 ) {
     AlertDialog(
@@ -479,7 +676,7 @@ private fun ShowLoanRepaymentConfirmationDialog(
                 onClick = {
                     onDismiss()
                     val request = LoanRepaymentRequestEntity(
-                        accountNumber = loanAccountNumber,
+                        accountNumber = accountNumber.ifBlank { loanAccountNumber },
                         paymentTypeId = paymentTypeId,
                         dateFormat = "dd-MM-yyyy",
                         locale = "en",
@@ -487,6 +684,11 @@ private fun ShowLoanRepaymentConfirmationDialog(
                         transactionDate = DateHelper.getDateAsStringFromLong(
                             repaymentDate,
                         ),
+                        checkNumber = chequeNumber.ifBlank { null },
+                        routingCode = routingCode.ifBlank { null },
+                        receiptNumber = receiptNumber.ifBlank { null },
+                        bankNumber = bankNumber.ifBlank { null },
+                        note = note.ifBlank { null },
                     )
                     submitPayment.invoke(request)
                 },
@@ -519,6 +721,29 @@ private fun ShowLoanRepaymentConfirmationDialog(
                 Text(text = stringResource(Res.string.feature_loan_additional_payment) + " : " + additionalPayment)
                 Text(text = stringResource(Res.string.feature_loan_loan_fees) + " : " + fees)
                 Text(text = stringResource(Res.string.feature_loan_total) + " : " + total)
+
+                // Show payment details if entered
+                if (externalId.isNotBlank()) {
+                    Text(text = stringResource(Res.string.feature_loan_external_id_field) + " : " + externalId)
+                }
+                if (chequeNumber.isNotBlank()) {
+                    Text(text = stringResource(Res.string.feature_loan_cheque_number) + " : " + chequeNumber)
+                }
+                if (routingCode.isNotBlank()) {
+                    Text(text = stringResource(Res.string.feature_loan_routing_code) + " : " + routingCode)
+                }
+                if (receiptNumber.isNotBlank()) {
+                    Text(text = stringResource(Res.string.feature_loan_receipt_number) + " : " + receiptNumber)
+                }
+                if (bankNumber.isNotBlank()) {
+                    Text(text = stringResource(Res.string.feature_loan_bank_number) + " : " + bankNumber)
+                }
+                if (note.isNotBlank()) {
+                    Text(text = stringResource(Res.string.feature_loan_note) + " : " + note)
+                }
+                if (waivePenalties) {
+                    Text(text = stringResource(Res.string.feature_loan_waive_penalties) + " : Yes")
+                }
             }
         },
     )
@@ -532,6 +757,8 @@ private fun calculateTotal(
     fees: String,
     amount: String,
     additionalPayment: String,
+    penaltyChargesPortion: Double,
+    waivePenalties: Boolean,
 ): Double {
     fun setValue(value: String): Double {
         if (value.isEmpty()) {
@@ -547,8 +774,9 @@ private fun calculateTotal(
     val feesValue = setValue(fees)
     val amountValue = setValue(amount)
     val additionalPaymentValue = setValue(additionalPayment)
+    val penaltiesValue = if (waivePenalties) 0.0 else penaltyChargesPortion
 
-    return feesValue + amountValue + additionalPaymentValue
+    return feesValue + amountValue + additionalPaymentValue + penaltiesValue
 }
 
 private fun isAllFieldsValid(
