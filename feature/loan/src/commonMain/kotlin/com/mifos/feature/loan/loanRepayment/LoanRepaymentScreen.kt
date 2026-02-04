@@ -494,14 +494,12 @@ private fun LoanRepaymentContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Show Payment Details Toggle
         MifosCheckBox(
             text = stringResource(Res.string.feature_loan_show_payment_details),
             checked = showPaymentDetails,
             onCheckChanged = { showPaymentDetails = it },
         )
 
-        // Payment Details Fields (conditionally shown)
         if (showPaymentDetails) {
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -562,21 +560,21 @@ private fun LoanRepaymentContent(
                 label = stringResource(Res.string.feature_loan_bank_number),
                 error = null,
             )
-        }
 
-        // Note Field
-        MifosOutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
-            value = note,
-            onValueChange = { note = it },
-            label = stringResource(Res.string.feature_loan_note),
-            error = null,
-            maxLines = 4,
-        )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            MifosOutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = note,
+                onValueChange = { note = it },
+                label = stringResource(Res.string.feature_loan_note),
+                error = null,
+                maxLines = 4,
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Waive Penalties Section
         if ((loanRepaymentTemplate.penaltyChargesPortion ?: 0.0) > 0.0) {
             MifosCheckBox(
                 text = stringResource(Res.string.feature_loan_waive_penalties),
@@ -742,7 +740,10 @@ private fun ShowLoanRepaymentConfirmationDialog(
                     Text(text = stringResource(Res.string.feature_loan_note) + " : " + note)
                 }
                 if (waivePenalties) {
-                    Text(text = stringResource(Res.string.feature_loan_waive_penalties) + " : Yes")
+                    Text(
+                        text = stringResource(Res.string.feature_loan_waive_penalties) +
+                            " : " + stringResource(Res.string.yes),
+                    )
                 }
             }
         },
