@@ -43,6 +43,7 @@ import androidclient.feature.loan.generated.resources.feature_loan_sync_previous
 import androidclient.feature.loan.generated.resources.feature_loan_total
 import androidclient.feature.loan.generated.resources.feature_loan_transaction_breakdown
 import androidclient.feature.loan.generated.resources.feature_loan_waive_penalties
+import androidclient.feature.loan.generated.resources.yes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
