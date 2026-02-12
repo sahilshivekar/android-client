@@ -184,7 +184,7 @@ class LoanRepaymentViewModel(
     fun formatCurrency(amount: Double?, code: String?, decimalPlaces: Int?): String {
         return CurrencyFormatter.format(
             balance = amount,
-            currencyCode = code,
+            currencyCode = code ?: "$",
             maximumFractionDigits = decimalPlaces ?: 2,
         )
     }
@@ -196,7 +196,7 @@ class LoanRepaymentViewModel(
         paymentType: String,
     ): Boolean {
         return listOf(amount, additionalPayment, fees).all {
-            it.trim().toDoubleOrNull()?.let { n -> n >= 0 } == true
+            it.trim().toDoubleOrNull()?.let { n -> n > 0 } == true
         } && paymentType.isNotBlank()
     }
 }
