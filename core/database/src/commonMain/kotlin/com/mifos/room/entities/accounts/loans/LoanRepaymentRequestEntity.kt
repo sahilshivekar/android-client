@@ -49,6 +49,8 @@ data class LoanRepaymentRequestEntity(
 
     val accountNumber: String? = null,
 
+    val externalId: String? = null,
+
     val checkNumber: String? = null,
 
     val routingCode: String? = null,
