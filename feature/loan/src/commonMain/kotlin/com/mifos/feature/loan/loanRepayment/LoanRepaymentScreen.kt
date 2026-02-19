@@ -101,6 +101,7 @@ import org.jetbrains.compose.ui.tooling.preview.PreviewParameterProvider
 import org.koin.compose.viewmodel.koinViewModel
 import template.core.base.designsystem.theme.KptTheme
 import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 @Composable
 internal fun LoanRepaymentScreen(
@@ -264,7 +265,7 @@ internal fun LoanRepaymentScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
 private fun LoanRepaymentContent(
     loanId: Int,
@@ -475,7 +476,6 @@ private fun LoanRepaymentContent(
             value = uiState.amount,
             onValueChange = { onUpdateAmount(it) },
             label = stringResource(Res.string.feature_loan_amount),
-            error = null,
             keyboardType = KeyboardType.Number,
             prefix = loanRepaymentTemplate.currency?.code?.let { code ->
                 { Text(text = "$code ") }
@@ -489,7 +489,6 @@ private fun LoanRepaymentContent(
             value = uiState.additionalPayment,
             onValueChange = { onUpdateAdditionalPayment(it) },
             label = stringResource(Res.string.feature_loan_additional_payment),
-            error = null,
             keyboardType = KeyboardType.Number,
             prefix = loanRepaymentTemplate.currency?.code?.let { code ->
                 { Text(text = "$code ") }
@@ -503,7 +502,6 @@ private fun LoanRepaymentContent(
             value = uiState.fees,
             onValueChange = { onUpdateFees(it) },
             label = stringResource(Res.string.feature_loan_loan_fees),
-            error = null,
             keyboardType = KeyboardType.Number,
             prefix = loanRepaymentTemplate.currency?.code?.let { code ->
                 { Text(text = "$code ") }
@@ -523,7 +521,6 @@ private fun LoanRepaymentContent(
             ).toString(),
             onValueChange = { },
             label = stringResource(Res.string.feature_loan_total),
-            error = null,
             readOnly = true,
             prefix = loanRepaymentTemplate.currency?.code?.let { code ->
                 { Text(text = "$code ") }
