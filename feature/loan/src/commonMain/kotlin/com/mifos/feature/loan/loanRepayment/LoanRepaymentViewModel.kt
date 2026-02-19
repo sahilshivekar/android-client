@@ -40,13 +40,15 @@ class LoanRepaymentViewModel(
     private val _loanDetailsState = MutableStateFlow(LoanDetails())
     val loanDetailsState = _loanDetailsState.asStateFlow()
 
-    @OptIn(ExperimentalTime::class)
     init {
         mutableStateFlow.value = mutableStateFlow.value.copy(
-            repaymentDate = Clock.System.now().toEpochMilliseconds(),
+            repaymentDate = currentEpochMillis(),
         )
         trySendAction(LoanRepaymentAction.CheckDatabaseLoanRepayment)
     }
+
+    @OptIn(ExperimentalTime::class)
+    private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
     override fun handleAction(action: LoanRepaymentAction) {
         when (action) {
