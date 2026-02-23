@@ -245,6 +245,7 @@ data class AppShapes(
     val dp22: Shape = RoundedCornerShape(22.dp),
     val dp25: Shape = RoundedCornerShape(25.dp),
     val dp100: Shape = RoundedCornerShape(100.dp),
+    val bottomCornerDp8: Shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
 )
 
 /**
