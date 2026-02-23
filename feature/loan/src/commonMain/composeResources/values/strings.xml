@@ -472,6 +472,7 @@
     <string name="feature_loan_note">Note</string>
     <string name="feature_loan_waive_penalties">Waive Penalties</string>
     <string name="feature_loan_no_penalties_found">No penalties found</string>
-    <string name="feature_loan_payment_success_message">Payment submitted successfully. Transaction ID: </string>
+    <string name="feature_loan_payment_success_message">Payment submitted successfully. Transaction ID: %1$s</string>
+    <string name="label_value_format">%1$s : %2$s</string>
 
 </resources>
