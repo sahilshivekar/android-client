@@ -43,6 +43,7 @@ import androidclient.feature.loan.generated.resources.feature_loan_sync_previous
 import androidclient.feature.loan.generated.resources.feature_loan_total
 import androidclient.feature.loan.generated.resources.feature_loan_transaction_breakdown
 import androidclient.feature.loan.generated.resources.feature_loan_waive_penalties
+import androidclient.feature.loan.generated.resources.label_value_format
 import androidclient.feature.loan.generated.resources.yes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,7 +79,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mifos.core.common.utils.CurrencyFormatter
 import com.mifos.core.common.utils.DateHelper
@@ -87,6 +87,7 @@ import com.mifos.core.designsystem.component.MifosOutlinedTextField
 import com.mifos.core.designsystem.component.MifosScaffold
 import com.mifos.core.designsystem.component.MifosSweetError
 import com.mifos.core.designsystem.component.MifosTextFieldDropdown
+import com.mifos.core.designsystem.theme.DesignToken
 import com.mifos.core.ui.components.MifosCheckBox
 import com.mifos.core.ui.components.MifosProgressIndicator
 import com.mifos.room.entities.PaymentTypeOptionEntity
@@ -112,7 +113,6 @@ internal fun LoanRepaymentScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Handle events
     LaunchedEffect(Unit) {
         viewmodel.eventFlow.collect { event ->
             when (event) {
@@ -120,7 +120,7 @@ internal fun LoanRepaymentScreen(
                     if (event.response != null) {
                         scope.launch {
                             snackbarHostState.showSnackbar(
-                                message = getString(Res.string.feature_loan_payment_success_message) + event.response.resourceId,
+                                message = getString(Res.string.feature_loan_payment_success_message, event.response.resourceId.toString()),
                             )
                             navigateBack()
                         }
@@ -377,7 +377,7 @@ private fun LoanRepaymentContent(
             text = clientName,
         )
 
-        HorizontalDivider(modifier = Modifier.padding(top = 10.dp))
+        HorizontalDivider(modifier = Modifier.padding(top = DesignToken.spacing.medium))
 
         FarApartTextItem(title = loanProductName, value = loanId.toString())
         FarApartTextItem(
@@ -397,14 +397,13 @@ private fun LoanRepaymentContent(
             ),
         )
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = DesignToken.spacing.medium))
 
-        // Transaction Breakdown Section
         Text(
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
             text = stringResource(Res.string.feature_loan_transaction_breakdown),
-            modifier = Modifier.padding(top = 10.dp),
+            modifier = Modifier.padding(top = DesignToken.spacing.medium),
         )
 
         FarApartTextItem(
@@ -440,7 +439,7 @@ private fun LoanRepaymentContent(
             ),
         )
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = DesignToken.spacing.medium))
 
         MifosDatePickerTextField(
             modifier = Modifier.fillMaxWidth(),
@@ -452,7 +451,7 @@ private fun LoanRepaymentContent(
             showDatePickerDialog = true
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         MifosTextFieldDropdown(
             modifier = Modifier.fillMaxWidth(),
@@ -469,7 +468,7 @@ private fun LoanRepaymentContent(
             readOnly = true,
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         MifosOutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
@@ -482,7 +481,7 @@ private fun LoanRepaymentContent(
             },
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         MifosOutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
@@ -495,7 +494,7 @@ private fun LoanRepaymentContent(
             },
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         MifosOutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
@@ -508,7 +507,7 @@ private fun LoanRepaymentContent(
             },
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         MifosOutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
@@ -527,7 +526,7 @@ private fun LoanRepaymentContent(
             },
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         MifosCheckBox(
             text = stringResource(Res.string.feature_loan_show_payment_details),
@@ -536,7 +535,7 @@ private fun LoanRepaymentContent(
         )
 
         if (uiState.showPaymentDetails) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(DesignToken.spacing.small))
 
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
@@ -546,7 +545,7 @@ private fun LoanRepaymentContent(
                 error = null,
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
@@ -556,7 +555,7 @@ private fun LoanRepaymentContent(
                 error = null,
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
@@ -566,7 +565,7 @@ private fun LoanRepaymentContent(
                 error = null,
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
@@ -576,7 +575,7 @@ private fun LoanRepaymentContent(
                 error = null,
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
@@ -586,7 +585,7 @@ private fun LoanRepaymentContent(
                 error = null,
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
@@ -596,7 +595,7 @@ private fun LoanRepaymentContent(
                 error = null,
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
@@ -608,7 +607,7 @@ private fun LoanRepaymentContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         if ((loanRepaymentTemplate.penaltyChargesPortion ?: 0.0) > 0.0) {
             MifosCheckBox(
@@ -624,7 +623,7 @@ private fun LoanRepaymentContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -664,7 +663,7 @@ private fun FarApartTextItem(title: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 10.dp),
+            .padding(top = DesignToken.spacing.medium),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
@@ -679,6 +678,17 @@ private fun FarApartTextItem(title: String, value: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+@Composable
+private fun LabelValueText(label: String, value: String) {
+    Text(
+        text = stringResource(
+            Res.string.label_value_format,
+            label,
+            value,
+        ),
+    )
 }
 
 @Composable
@@ -744,40 +754,39 @@ private fun ShowLoanRepaymentConfirmationDialog(
         },
         text = {
             Column {
-                Text(text = stringResource(Res.string.feature_loan_account_number) + " : " + loanAccountNumber)
-                Text(
-                    text = stringResource(Res.string.feature_loan_repayment_date) + " : " +
-                        DateHelper.getDateAsStringFromLong(repaymentDate),
+                LabelValueText(label = stringResource(Res.string.feature_loan_account_number), value = loanAccountNumber)
+                LabelValueText(
+                    label = stringResource(Res.string.feature_loan_repayment_date),
+                    value = DateHelper.getDateAsStringFromLong(repaymentDate),
                 )
-                Text(text = stringResource(Res.string.feature_loan_payment_type) + " : " + paymentType)
-                Text(text = stringResource(Res.string.feature_loan_amount) + " : " + amount)
-                Text(text = stringResource(Res.string.feature_loan_additional_payment) + " : " + additionalPayment)
-                Text(text = stringResource(Res.string.feature_loan_loan_fees) + " : " + fees)
-                Text(text = stringResource(Res.string.feature_loan_total) + " : " + total)
+                LabelValueText(label = stringResource(Res.string.feature_loan_payment_type), value = paymentType)
+                LabelValueText(label = stringResource(Res.string.feature_loan_amount), value = amount)
+                LabelValueText(label = stringResource(Res.string.feature_loan_additional_payment), value = additionalPayment)
+                LabelValueText(label = stringResource(Res.string.feature_loan_loan_fees), value = fees)
+                LabelValueText(label = stringResource(Res.string.feature_loan_total), value = total)
 
-                // Show payment details if entered
                 if (externalId.isNotBlank()) {
-                    Text(text = stringResource(Res.string.feature_loan_external_id_field) + " : " + externalId)
+                    LabelValueText(label = stringResource(Res.string.feature_loan_external_id_field), value = externalId)
                 }
                 if (chequeNumber.isNotBlank()) {
-                    Text(text = stringResource(Res.string.feature_loan_cheque_number) + " : " + chequeNumber)
+                    LabelValueText(label = stringResource(Res.string.feature_loan_cheque_number), value = chequeNumber)
                 }
                 if (routingCode.isNotBlank()) {
-                    Text(text = stringResource(Res.string.feature_loan_routing_code) + " : " + routingCode)
+                    LabelValueText(label = stringResource(Res.string.feature_loan_routing_code), value = routingCode)
                 }
                 if (receiptNumber.isNotBlank()) {
-                    Text(text = stringResource(Res.string.feature_loan_receipt_number) + " : " + receiptNumber)
+                    LabelValueText(label = stringResource(Res.string.feature_loan_receipt_number), value = receiptNumber)
                 }
                 if (bankNumber.isNotBlank()) {
-                    Text(text = stringResource(Res.string.feature_loan_bank_number) + " : " + bankNumber)
+                    LabelValueText(label = stringResource(Res.string.feature_loan_bank_number), value = bankNumber)
                 }
                 if (note.isNotBlank()) {
-                    Text(text = stringResource(Res.string.feature_loan_note) + " : " + note)
+                    LabelValueText(label = stringResource(Res.string.feature_loan_note), value = note)
                 }
                 if (waivePenalties) {
-                    Text(
-                        text = stringResource(Res.string.feature_loan_waive_penalties) +
-                            " : " + stringResource(Res.string.yes),
+                    LabelValueText(
+                        label = stringResource(Res.string.feature_loan_waive_penalties),
+                        value = stringResource(Res.string.yes),
                     )
                 }
             }
@@ -822,7 +831,6 @@ private fun isAllFieldsValid(
     paymentType: String,
 ): Boolean {
     val amountValid = amount.trim().toDoubleOrNull()?.let { it > 0 } == true
-    // additionalPayment and fees are optional — empty string or 0 is acceptable
     val additionalPaymentValid = additionalPayment.isBlank() ||
         additionalPayment.trim().toDoubleOrNull() != null
     val feesValid = fees.isBlank() ||
