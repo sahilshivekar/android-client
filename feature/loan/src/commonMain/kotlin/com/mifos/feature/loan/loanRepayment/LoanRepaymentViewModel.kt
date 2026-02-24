@@ -164,7 +164,6 @@ class LoanRepaymentViewModel(
                             hasCheckedDatabase = true,
                             loanRepaymentExistsInDatabase = existsInDatabase,
                         )
-                        // Only load the template if no offline repayment exists
                         if (!existsInDatabase) {
                             trySendAction(LoanRepaymentAction.LoadLoanRepaymentTemplate)
                         }
@@ -182,7 +181,6 @@ class LoanRepaymentViewModel(
         mutableStateFlow.value = mutableStateFlow.value.copy(
             paymentType = paymentType,
             paymentTypeId = paymentTypeId,
-            // Clear error when user selects
             paymentTypeError = null,
         )
     }
@@ -190,7 +188,6 @@ class LoanRepaymentViewModel(
     fun updateAmount(amount: String) {
         mutableStateFlow.value = mutableStateFlow.value.copy(
             amount = amount,
-            // Clear error when user types
             amountError = null,
         )
     }
@@ -258,14 +255,12 @@ data class LoanRepaymentUiState(
     val loanRepaymentExistsInDatabase: Boolean = false,
     val hasCheckedDatabase: Boolean = false,
     val showPaymentDetails: Boolean = false,
-    // Payment input fields
     val paymentType: String = "",
     val amount: String = "",
     val additionalPayment: String = "",
     val fees: String = "",
     val paymentTypeId: Int = 0,
     val repaymentDate: Long = 0L,
-    // Payment detail fields
     val accountNumber: String = "",
     val externalId: String = "",
     val chequeNumber: String = "",
@@ -274,7 +269,6 @@ data class LoanRepaymentUiState(
     val bankNumber: String = "",
     val note: String = "",
     val waivePenalties: Boolean = false,
-    // Validation error fields
     val amountError: String? = null,
     val paymentTypeError: String? = null,
 )
