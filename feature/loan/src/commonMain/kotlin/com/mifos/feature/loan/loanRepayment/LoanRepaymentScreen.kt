@@ -826,7 +826,6 @@ private fun calculateTotal(
 
     val total = feesValue + amountValue + additionalPaymentValue + penaltiesValue
 
-    // Round to currency decimal places to avoid floating-point precision issues
     val multiplier = 10.0.pow(decimalPlaces)
     return (total * multiplier).roundToLong() / multiplier
 }
