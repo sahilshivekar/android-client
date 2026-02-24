@@ -79,6 +79,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mifos.core.common.utils.CurrencyFormatter
 import com.mifos.core.common.utils.DateHelper
@@ -100,7 +101,8 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.jetbrains.compose.ui.tooling.preview.PreviewParameter
 import org.jetbrains.compose.ui.tooling.preview.PreviewParameterProvider
 import org.koin.compose.viewmodel.koinViewModel
-import template.core.base.designsystem.theme.KptTheme
+import kotlin.math.pow
+import kotlin.math.roundToLong
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -159,6 +161,7 @@ internal fun LoanRepaymentScreen(
         onUpdateBankNumber = viewmodel::updateBankNumber,
         onUpdateNote = viewmodel::updateNote,
         onUpdateWaivePenalties = viewmodel::updateWaivePenalties,
+        onSetValidationErrors = viewmodel::setValidationErrors,
     )
 }
 
@@ -190,6 +193,7 @@ internal fun LoanRepaymentScreen(
     onUpdateBankNumber: (String) -> Unit,
     onUpdateNote: (String) -> Unit,
     onUpdateWaivePenalties: (Boolean) -> Unit,
+    onSetValidationErrors: (String?, String?) -> Unit,
 ) {
     MifosScaffold(
         snackbarHostState = snackbarHostState,
@@ -236,6 +240,7 @@ internal fun LoanRepaymentScreen(
                         onUpdateBankNumber = onUpdateBankNumber,
                         onUpdateNote = onUpdateNote,
                         onUpdateWaivePenalties = onUpdateWaivePenalties,
+                        onSetValidationErrors = onSetValidationErrors,
                     )
                 }
 
@@ -292,6 +297,7 @@ private fun LoanRepaymentContent(
     onUpdateBankNumber: (String) -> Unit,
     onUpdateNote: (String) -> Unit,
     onUpdateWaivePenalties: (Boolean) -> Unit,
+    onSetValidationErrors: (String?, String?) -> Unit,
 ) {
     var showDatePickerDialog by rememberSaveable { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(
@@ -323,6 +329,7 @@ private fun LoanRepaymentContent(
                 additionalPayment = uiState.additionalPayment,
                 penaltyChargesPortion = loanRepaymentTemplate.penaltyChargesPortion ?: 0.0,
                 waivePenalties = uiState.waivePenalties,
+                decimalPlaces = loanRepaymentTemplate.currency?.decimalPlaces ?: 2,
             ).toString(),
             accountNumber = uiState.accountNumber,
             externalId = uiState.externalId,
@@ -466,64 +473,58 @@ private fun LoanRepaymentContent(
             label = stringResource(Res.string.feature_loan_payment_type),
             options = loanRepaymentTemplate.paymentTypeOptions?.map { it.name } ?: emptyList(),
             readOnly = true,
+            errorMessage = uiState.paymentTypeError,
         )
 
         Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         MifosOutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
             value = uiState.amount,
             onValueChange = { onUpdateAmount(it) },
             label = stringResource(Res.string.feature_loan_amount),
+            error = uiState.amountError,
+            modifier = Modifier.fillMaxWidth(),
             keyboardType = KeyboardType.Number,
-            prefix = loanRepaymentTemplate.currency?.code?.let { code ->
-                { Text(text = "$code ") }
-            },
         )
 
         Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         MifosOutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
             value = uiState.additionalPayment,
             onValueChange = { onUpdateAdditionalPayment(it) },
             label = stringResource(Res.string.feature_loan_additional_payment),
+            error = null,
+            modifier = Modifier.fillMaxWidth(),
             keyboardType = KeyboardType.Number,
-            prefix = loanRepaymentTemplate.currency?.code?.let { code ->
-                { Text(text = "$code ") }
-            },
         )
 
         Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         MifosOutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
             value = uiState.fees,
             onValueChange = { onUpdateFees(it) },
             label = stringResource(Res.string.feature_loan_loan_fees),
+            error = null,
+            modifier = Modifier.fillMaxWidth(),
             keyboardType = KeyboardType.Number,
-            prefix = loanRepaymentTemplate.currency?.code?.let { code ->
-                { Text(text = "$code ") }
-            },
         )
 
         Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
         MifosOutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
             value = calculateTotal(
                 fees = uiState.fees,
                 amount = uiState.amount,
                 additionalPayment = uiState.additionalPayment,
                 penaltyChargesPortion = loanRepaymentTemplate.penaltyChargesPortion ?: 0.0,
                 waivePenalties = uiState.waivePenalties,
+                decimalPlaces = loanRepaymentTemplate.currency?.decimalPlaces ?: 2,
             ).toString(),
             onValueChange = { },
             label = stringResource(Res.string.feature_loan_total),
+            error = null,
+            modifier = Modifier.fillMaxWidth(),
             readOnly = true,
-            prefix = loanRepaymentTemplate.currency?.code?.let { code ->
-                { Text(text = "$code ") }
-            },
         )
 
         Spacer(modifier = Modifier.height(DesignToken.spacing.large))
@@ -646,6 +647,7 @@ private fun LoanRepaymentContent(
                             additionalPayment = uiState.additionalPayment,
                             fees = uiState.fees,
                             paymentType = uiState.paymentType,
+                            onValidationError = onSetValidationErrors,
                         )
                     ) {
                         showConfirmationDialog = true
@@ -796,7 +798,7 @@ private fun ShowLoanRepaymentConfirmationDialog(
 
 /**
  * Calculating the Total of the  Amount, Additional Payment and Fee
- * @return Total of the Amount + Additional Payment + Fees
+ * @return Total of the Amount + Additional Payment + Fees, rounded to decimalPlaces
  */
 private fun calculateTotal(
     fees: String,
@@ -804,6 +806,7 @@ private fun calculateTotal(
     additionalPayment: String,
     penaltyChargesPortion: Double,
     waivePenalties: Boolean,
+    decimalPlaces: Int = 2,
 ): Double {
     fun setValue(value: String): Double {
         if (value.isEmpty()) {
@@ -821,7 +824,11 @@ private fun calculateTotal(
     val additionalPaymentValue = setValue(additionalPayment)
     val penaltiesValue = if (waivePenalties) 0.0 else penaltyChargesPortion
 
-    return feesValue + amountValue + additionalPaymentValue + penaltiesValue
+    val total = feesValue + amountValue + additionalPaymentValue + penaltiesValue
+
+    // Round to currency decimal places to avoid floating-point precision issues
+    val multiplier = 10.0.pow(decimalPlaces)
+    return (total * multiplier).roundToLong() / multiplier
 }
 
 private fun isAllFieldsValid(
@@ -829,13 +836,26 @@ private fun isAllFieldsValid(
     additionalPayment: String,
     fees: String,
     paymentType: String,
+    onValidationError: (amountError: String?, paymentTypeError: String?) -> Unit,
 ): Boolean {
     val amountValid = amount.trim().toDoubleOrNull()?.let { it > 0 } == true
     val additionalPaymentValid = additionalPayment.isBlank() ||
         additionalPayment.trim().toDoubleOrNull() != null
     val feesValid = fees.isBlank() ||
         fees.trim().toDoubleOrNull() != null
-    return amountValid && additionalPaymentValid && feesValid && paymentType.isNotBlank()
+    val paymentTypeValid = paymentType.isNotBlank()
+
+    val amountError = when {
+        amount.isBlank() -> "Amount is required"
+        !amountValid -> "Amount must be greater than 0"
+        else -> null
+    }
+
+    val paymentTypeError = if (!paymentTypeValid) "Payment type is required" else null
+
+    onValidationError(amountError, paymentTypeError)
+
+    return amountValid && additionalPaymentValid && feesValid && paymentTypeValid
 }
 
 private class LoanRepaymentScreenPreviewProvider :
@@ -905,5 +925,6 @@ private fun PreviewLoanRepaymentScreen(
         onUpdateBankNumber = {},
         onUpdateNote = {},
         onUpdateWaivePenalties = {},
+        onSetValidationErrors = { _, _ -> },
     )
 }

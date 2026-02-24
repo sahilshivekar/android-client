@@ -182,11 +182,17 @@ class LoanRepaymentViewModel(
         mutableStateFlow.value = mutableStateFlow.value.copy(
             paymentType = paymentType,
             paymentTypeId = paymentTypeId,
+            // Clear error when user selects
+            paymentTypeError = null,
         )
     }
 
     fun updateAmount(amount: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(amount = amount)
+        mutableStateFlow.value = mutableStateFlow.value.copy(
+            amount = amount,
+            // Clear error when user types
+            amountError = null,
+        )
     }
 
     fun updateAdditionalPayment(additionalPayment: String) {
@@ -236,6 +242,13 @@ class LoanRepaymentViewModel(
     fun updateWaivePenalties(waive: Boolean) {
         mutableStateFlow.value = mutableStateFlow.value.copy(waivePenalties = waive)
     }
+
+    fun setValidationErrors(amountError: String?, paymentTypeError: String?) {
+        mutableStateFlow.value = mutableStateFlow.value.copy(
+            amountError = amountError,
+            paymentTypeError = paymentTypeError,
+        )
+    }
 }
 
 data class LoanRepaymentUiState(
@@ -261,6 +274,9 @@ data class LoanRepaymentUiState(
     val bankNumber: String = "",
     val note: String = "",
     val waivePenalties: Boolean = false,
+    // Validation error fields
+    val amountError: String? = null,
+    val paymentTypeError: String? = null,
 )
 
 sealed interface LoanRepaymentEvent {
