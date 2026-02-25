@@ -78,6 +78,9 @@ import org.jetbrains.compose.ui.tooling.preview.PreviewParameterProvider
 import org.koin.compose.viewmodel.koinViewModel
 import template.core.base.designsystem.theme.KptTheme
 
+private const val HEADER_BACKGROUND_ALPHA = 0.3f
+private const val BREAKDOWN_BACKGROUND_ALPHA = 0.08f
+
 @Composable
 internal fun LoanTransactionsScreen(
     navigateBack: () -> Unit,
@@ -292,7 +295,7 @@ private fun LoanTransactionsTableContent(
                     backgroundColor = lerp(
                         KptTheme.colorScheme.surface,
                         KptTheme.colorScheme.primary,
-                        0.3f,
+                        HEADER_BACKGROUND_ALPHA,
                     ),
                     edgeOffset = DesignToken.padding.medium,
                     cornerShape = DesignToken.shapes.topMedium,
@@ -309,7 +312,7 @@ private fun LoanTransactionsTableContent(
                                             lerp(
                                                 KptTheme.colorScheme.surface,
                                                 KptTheme.colorScheme.primary,
-                                                0.08f,
+                                                BREAKDOWN_BACKGROUND_ALPHA,
                                             )
                                         } else {
                                             KptTheme.colorScheme.background
@@ -328,7 +331,7 @@ private fun LoanTransactionsTableContent(
                         }
                     },
                     widths = columnWidths,
-                    backgroundColor = Color.Transparent,
+                    backgroundColor = KptTheme.colorScheme.background,
                     edgeOffset = DesignToken.padding.medium,
                 )
             }
@@ -390,7 +393,7 @@ private fun TransactionRow(
                             lerp(
                                 KptTheme.colorScheme.surface,
                                 KptTheme.colorScheme.primary,
-                                0.08f,
+                                BREAKDOWN_BACKGROUND_ALPHA,
                             )
                         } else {
                             KptTheme.colorScheme.surface
@@ -416,7 +419,7 @@ private fun TransactionRow(
     MifosTableRow(
         cells = cells,
         widths = widths,
-        backgroundColor = Color.Transparent,
+        backgroundColor = KptTheme.colorScheme.background,
         onClick = { onRowAction(row) },
         edgeOffset = DesignToken.padding.medium,
     )
