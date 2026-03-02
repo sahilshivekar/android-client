@@ -73,6 +73,7 @@ class ClientLoanAccountsViewModel(
                     action.loanId,
                 ),
             )
+
             is ClientLoanAccountsAction.HandleFilterClick -> handleFilterClick(action.status)
 
             is ClientLoanAccountsAction.ClearFilters -> clearFilters()

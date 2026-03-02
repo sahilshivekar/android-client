@@ -104,6 +104,8 @@
     <string name="amount">Monto</string>
     <string name="type">Tipo</string>
     <string name="collected_on">Cobrado el</string>
+    <string name="more">más</string>
+    <string name="less">menos</string>
 
     <string name="client_share_accounts_share_product">Producto de acciones</string>
     <string name="client_share_accounts_pending_for_approval_shares">Acciones pendientes de aprobación</string>
