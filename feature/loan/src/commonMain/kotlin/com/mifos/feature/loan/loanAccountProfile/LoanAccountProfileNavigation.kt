@@ -12,7 +12,7 @@ package com.mifos.feature.loan.loanAccountProfile
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import com.mifos.room.entities.accounts.loans.LoanWithAssociationsEntity
+import com.mifos.core.model.objects.account.loan.LoanWithAssociations
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -24,13 +24,14 @@ fun NavGraphBuilder.loanProfileAccountDestination(
     onNavigateBack: () -> Unit,
     navController: NavController,
     navigateToRepaymentSchedule: (Int) -> Unit,
+    navigateToLoanDetails: (Int) -> Unit,
     navigateToTransactions: (Int) -> Unit,
     navigateToCharges: (Int) -> Unit,
     navigateToDocuments: (Int) -> Unit,
     navigateToReschedules: (Int) -> Unit,
     navigateToNotes: (Int) -> Unit,
-    approveLoan: (Int, LoanWithAssociationsEntity) -> Unit,
-    onRepaymentClick: (LoanWithAssociationsEntity) -> Unit,
+    approveLoan: (Int, LoanWithAssociations) -> Unit,
+    onRepaymentClick: (LoanWithAssociations) -> Unit,
     navigateToTransferScreen: (loanId: Int, accountNumber: String, clientId: Int, currencyCode: String, officeId: Int) -> Unit,
 ) {
     composable<LoanAccountRoute> {
@@ -38,6 +39,7 @@ fun NavGraphBuilder.loanProfileAccountDestination(
             onNavigateBack = onNavigateBack,
             navController = navController,
             navigateToRepaymentSchedule = navigateToRepaymentSchedule,
+            navigateToLoanDetails = navigateToLoanDetails,
             navigateToTransactions = navigateToTransactions,
             navigateToCharges = navigateToCharges,
             navigateToDocuments = navigateToDocuments,
