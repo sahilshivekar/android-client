@@ -18,9 +18,9 @@ import com.mifos.core.common.utils.CurrencyFormatter
 import com.mifos.core.common.utils.DataState
 import com.mifos.core.common.utils.DateHelper
 import com.mifos.core.data.repository.LoanAccountSummaryRepository
+import com.mifos.core.model.objects.account.loan.LoanStatus
+import com.mifos.core.model.objects.account.loan.LoanWithAssociations
 import com.mifos.core.ui.util.BaseViewModel
-import com.mifos.room.entities.accounts.loans.LoanStatusEntity
-import com.mifos.room.entities.accounts.loans.LoanWithAssociationsEntity
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
@@ -138,7 +138,7 @@ internal class LoanAccountSummaryViewModel(
                     }
 
                     is DataState.Success -> {
-                        val loan: LoanWithAssociationsEntity? = dataState.data
+                        val loan: LoanWithAssociations? = dataState.data
                         if (loan != null) {
                             fillLoanSummary(loan)
                         } else {
@@ -167,14 +167,14 @@ internal class LoanAccountSummaryViewModel(
         }
     }
 
-    private fun fillLoanSummary(loan: LoanWithAssociationsEntity) {
+    private fun fillLoanSummary(loan: LoanWithAssociations) {
         val actualDisbursementDate = formatActualDisbursementDate(
             loan.timeline?.actualDisbursementDate,
         )
 
         val shouldInflateLoanSummary = loan.status?.shouldInflateLoanSummary() ?: false
         // dataTable should be empty if [inflateLoanSummary] is false
-        val summary = if (shouldInflateLoanSummary) loan.summary else null
+        val summary = if (shouldInflateLoanSummary) loan.loanSummary else null
 
         val currencyCode = loan.currency?.code
         val decimalPlaces = loan.currency?.decimalPlaces
@@ -271,8 +271,10 @@ internal class LoanAccountSummaryViewModel(
         }
     }
 
-    private fun LoanStatusEntity.shouldInflateLoanSummary(): Boolean {
-        return active == true || closedObligationsMet == true || overpaid == true
+    private fun LoanStatus.shouldInflateLoanSummary(): Boolean {
+        return this == LoanStatus.ACTIVE ||
+            this == LoanStatus.CLOSED_OBLIGATIONS_MET ||
+            this == LoanStatus.OVERPAID
     }
 
     private fun formatCurrency(
@@ -292,7 +294,7 @@ internal class LoanAccountSummaryViewModel(
 }
 
 data class LoanAccountSummaryState(
-    val loanWithAssociations: LoanWithAssociationsEntity? = null,
+    val loanWithAssociations: LoanWithAssociations? = null,
     val dialogState: DialogState? = null,
     val showLoanIdCopiedMessage: Boolean = false,
     val openDropdown: Boolean = false,
@@ -357,11 +359,11 @@ sealed interface LoanAccountSummaryEvent {
     data class NavigateToCharges(val loanId: Int) : LoanAccountSummaryEvent
     data class NavigateToApproveLoan(
         val loanId: Int,
-        val loanWithAssociations: LoanWithAssociationsEntity,
+        val loanWithAssociations: LoanWithAssociations,
     ) : LoanAccountSummaryEvent
 
     data class NavigateToDisburseLoan(val loanId: Int) : LoanAccountSummaryEvent
-    data class NavigateToMakeRepayment(val loanWithAssociations: LoanWithAssociationsEntity) :
+    data class NavigateToMakeRepayment(val loanWithAssociations: LoanWithAssociations) :
         LoanAccountSummaryEvent
 }
 
@@ -387,13 +389,13 @@ sealed interface LoanAccountSummaryAction {
 /**
  * Extension function to determine the primary action button for a loan based on its status.
  */
-internal fun LoanStatusEntity.getPrimaryAction(): LoanPrimaryAction {
-    return when {
-        active == true -> LoanPrimaryAction.MAKE_REPAYMENT
-        pendingApproval == true -> LoanPrimaryAction.APPROVE_LOAN
-        waitingForDisbursal == true -> LoanPrimaryAction.DISBURSE_LOAN
-        overpaid == true -> LoanPrimaryAction.OVERPAID
-        closedObligationsMet == true -> LoanPrimaryAction.CLOSED
+internal fun LoanStatus.getPrimaryAction(): LoanPrimaryAction {
+    return when (this) {
+        LoanStatus.ACTIVE -> LoanPrimaryAction.MAKE_REPAYMENT
+        LoanStatus.PENDING -> LoanPrimaryAction.APPROVE_LOAN
+        LoanStatus.APPROVED -> LoanPrimaryAction.DISBURSE_LOAN
+        LoanStatus.OVERPAID -> LoanPrimaryAction.OVERPAID
+        LoanStatus.CLOSED_OBLIGATIONS_MET -> LoanPrimaryAction.CLOSED
         else -> LoanPrimaryAction.CLOSED
     }
 }

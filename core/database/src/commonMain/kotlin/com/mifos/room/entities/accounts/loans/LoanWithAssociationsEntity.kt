@@ -10,6 +10,9 @@
 package com.mifos.room.entities.accounts.loans
 
 import com.mifos.core.model.objects.account.loan.AmortizationType
+import com.mifos.core.model.objects.account.loan.ChargeOffBehaviour
+import com.mifos.core.model.objects.account.loan.DaysInMonthType
+import com.mifos.core.model.objects.account.loan.DaysInYearType
 import com.mifos.core.model.objects.account.loan.InterestCalculationPeriodType
 import com.mifos.core.model.objects.account.loan.InterestRateFrequencyType
 import com.mifos.core.model.objects.account.loan.InterestType
@@ -177,11 +180,39 @@ data class LoanWithAssociationsEntity(
 
     val loanProductCounter: Int = 0,
 
-    val multiDisburseLoan: Boolean = false,
+    val multiDisburseLoan: Boolean? = null,
 
-    val canDisburse: Boolean = false,
+    val canDisburse: Boolean? = null,
 
-    val inArrears: Boolean = false,
+    val inArrears: Boolean? = null,
 
-    val isNPA: Boolean = false,
+    val isNPA: Boolean? = null,
+
+    val isEqualAmortization: Boolean? = null,
+
+    val allowPartialPeriodInterestCalculation: Boolean? = null,
+
+    val interestRecognitionOnDisbursementDate: Boolean? = null,
+
+    val enableDownPayment: Boolean? = null,
+
+    val enableIncomeCapitalization: Boolean? = null,
+
+    val enableBuyDownFee: Boolean? = null,
+
+    val enableInstallmentLevelDelinquency: Boolean? = null,
+
+    val isInterestRecalculationEnabled: Boolean? = null,
+
+    val chargedOff: Boolean? = null,
+
+    @IgnoredOnParcel
+    val chargeOffBehaviour: ChargeOffBehaviour? = null,
+
+    @IgnoredOnParcel
+    val daysInYearType: DaysInYearType? = null,
+
+    @IgnoredOnParcel
+    val daysInMonthType: DaysInMonthType? = null,
+
 ) : Parcelable

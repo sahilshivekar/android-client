@@ -10,12 +10,12 @@
 package com.mifos.feature.loan.loanAccountProfile
 
 import androidclient.feature.loan.generated.resources.Res
+import androidclient.feature.loan.generated.resources.feature_loan_not_available_abbr
 import androidclient.feature.loan.generated.resources.feature_loan_profile_account
 import androidclient.feature.loan.generated.resources.feature_loan_profile_action_repayment
 import androidclient.feature.loan.generated.resources.feature_loan_profile_error_details_not_found
 import androidclient.feature.loan.generated.resources.feature_loan_profile_label_arrears
 import androidclient.feature.loan.generated.resources.feature_loan_profile_label_balance
-import androidclient.feature.loan.generated.resources.feature_loan_profile_label_client_name_placeholder
 import androidclient.feature.loan.generated.resources.feature_loan_profile_label_overpaid_by
 import androidclient.feature.loan.generated.resources.feature_loan_profile_section_account_overview
 import androidclient.feature.loan.generated.resources.feature_loan_profile_section_actions_details
@@ -55,6 +55,10 @@ import com.mifos.core.designsystem.icon.MifosIcons
 import com.mifos.core.designsystem.theme.AppColors
 import com.mifos.core.designsystem.theme.DesignToken
 import com.mifos.core.designsystem.theme.MifosTypography
+import com.mifos.core.model.objects.account.loan.Currency
+import com.mifos.core.model.objects.account.loan.LoanStatus
+import com.mifos.core.model.objects.account.loan.LoanSummary
+import com.mifos.core.model.objects.account.loan.LoanWithAssociations
 import com.mifos.core.ui.components.MifosBreadcrumbNavBar
 import com.mifos.core.ui.components.MifosErrorComponent
 import com.mifos.core.ui.components.MifosProgressIndicator
@@ -63,10 +67,7 @@ import com.mifos.core.ui.util.EventsEffect
 import com.mifos.core.ui.util.TextUtil
 import com.mifos.feature.loan.loanAccountProfile.components.LoanAccountProfileActionItem
 import com.mifos.feature.loan.loanAccountProfile.components.loanProfileActionItems
-import com.mifos.room.entities.accounts.loans.LoanStatusEntity
-import com.mifos.room.entities.accounts.loans.LoanWithAssociationsEntity
-import com.mifos.room.entities.accounts.loans.LoansAccountSummaryEntity
-import com.mifos.room.entities.accounts.savings.SavingAccountCurrencyEntity
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.jetbrains.compose.ui.tooling.preview.PreviewParameter
@@ -77,8 +78,9 @@ import template.core.base.designsystem.theme.KptTheme
 @Composable
 internal fun LoanAccountProfileScreen(
     onNavigateBack: () -> Unit,
-    approveLoan: (Int, LoanWithAssociationsEntity) -> Unit,
-    onRepaymentClick: (LoanWithAssociationsEntity) -> Unit,
+    approveLoan: (Int, LoanWithAssociations) -> Unit,
+    onRepaymentClick: (LoanWithAssociations) -> Unit,
+    navigateToLoanDetails: (Int) -> Unit,
     navigateToRepaymentSchedule: (Int) -> Unit,
     navigateToTransactions: (Int) -> Unit,
     navigateToCharges: (Int) -> Unit,
@@ -93,40 +95,50 @@ internal fun LoanAccountProfileScreen(
     val state by viewModel.stateFlow.collectAsStateWithLifecycle()
 
     EventsEffect(viewModel.eventFlow) { event ->
-        when (event) {
-            LoanAccountEvent.NavigateBack -> onNavigateBack.invoke()
-            is LoanAccountEvent.NavigateToAction -> {
-                val account = state.loanAccount ?: return@EventsEffect
 
+        if (event is LoanAccountEvent.NavigateBack) {
+            onNavigateBack()
+            return@EventsEffect
+        }
+
+        val account = state.loanAccount ?: return@EventsEffect
+
+        when (event) {
+            is LoanAccountEvent.NavigateToAction -> {
                 when (event.action) {
-                    LoanProfileAction.Approve -> approveLoan(account.id, account)
+                    LoanProfileAction.Approve -> approveLoan(account.id ?: 0, account)
                     LoanProfileAction.Repayment -> onRepaymentClick(account)
                     LoanProfileAction.Transfer -> {
                         val account = state.loanAccount ?: return@EventsEffect
                         navigateToTransferScreen(
-                            account.id,
-                            account.accountNo,
-                            account.clientId,
-                            account.currency.code ?: "N/A",
-                            account.clientOfficeId,
+                            account.id ?: return@EventsEffect,
+                            account.accountNo ?: return@EventsEffect,
+                            account.clientId ?: return@EventsEffect,
+                            account.currency?.code ?: getString(Res.string.feature_loan_not_available_abbr),
+                            account.clientOfficeId ?: return@EventsEffect,
                         )
                     }
                 }
             }
             is LoanAccountEvent.NavigateToDetail -> {
-                val loanId = state.loanAccount?.id ?: -1
-
-                when (event.detailItem) {
-                    LoanAccountProfileActionItem.RepaymentSchedule -> navigateToRepaymentSchedule(loanId)
-                    LoanAccountProfileActionItem.Transactions -> navigateToTransactions(loanId)
-                    LoanAccountProfileActionItem.Charges -> navigateToCharges(loanId)
-                    LoanAccountProfileActionItem.Documents -> navigateToDocuments(loanId)
-                    LoanAccountProfileActionItem.Reschedules -> navigateToReschedules(loanId)
-                    LoanAccountProfileActionItem.Notes -> navigateToNotes(loanId)
-                    else -> { }
+                account.id?.let { id ->
+                    when (event.detailItem) {
+                        LoanAccountProfileActionItem.RepaymentSchedule -> navigateToRepaymentSchedule(id)
+                        LoanAccountProfileActionItem.Transactions -> navigateToTransactions(id)
+                        LoanAccountProfileActionItem.Charges -> navigateToCharges(id)
+                        LoanAccountProfileActionItem.Documents -> navigateToDocuments(id)
+                        LoanAccountProfileActionItem.Notes -> navigateToNotes(id)
+                        LoanAccountProfileActionItem.Reschedules -> navigateToReschedules(id)
+                        LoanAccountProfileActionItem.AccountDetails -> navigateToLoanDetails(id)
+                        else -> { }
+                    }
                 }
             }
-            LoanAccountEvent.NavigateToAccountDetails -> {}
+
+            LoanAccountEvent.NavigateToAccountDetails -> {
+                account.id?.let { navigateToLoanDetails(it) }
+            }
+            else -> {}
         }
     }
 
@@ -224,7 +236,7 @@ private fun LoanAccountContent(
 
 @Composable
 private fun LoanAccountTopCard(
-    loanAccount: LoanWithAssociationsEntity,
+    loanAccount: LoanWithAssociations,
     statusUi: LoanStatusUiModel?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -232,8 +244,8 @@ private fun LoanAccountTopCard(
     val currencyCode = loanAccount.currency?.code
     val decimalPlaces = loanAccount.currency?.decimalPlaces
 
-    val balance = CurrencyFormatter.format(loanAccount.summary.totalOutstanding, currencyCode, decimalPlaces)
-    val arrears = CurrencyFormatter.format(loanAccount.summary.totalOverdue, currencyCode, decimalPlaces)
+    val balance = CurrencyFormatter.format(loanAccount.loanSummary?.totalOutstanding, currencyCode, decimalPlaces)
+    val arrears = CurrencyFormatter.format(loanAccount.loanSummary?.totalOverdue, currencyCode, decimalPlaces)
     val overpaid = CurrencyFormatter.format(loanAccount.totalOverpaid, currencyCode, decimalPlaces)
 
     MifosCard(
@@ -266,7 +278,7 @@ private fun LoanAccountTopCard(
                     Spacer(Modifier.height(KptTheme.spacing.xs))
 
                     Text(
-                        text = loanAccount.clientName ?: stringResource(Res.string.feature_loan_profile_label_client_name_placeholder),
+                        text = loanAccount.clientName ?: "",
                         style = MifosTypography.bodyMedium,
                         color = KptTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                     )
@@ -377,26 +389,21 @@ private class LoanAccountPreviewProvider : PreviewParameterProvider<LoanAccountS
     override val values: Sequence<LoanAccountState>
         get() = sequenceOf(
             LoanAccountState(
-                loanAccount = LoanWithAssociationsEntity(
+                loanAccount = LoanWithAssociations(
                     id = 1,
                     accountNo = "000000018",
                     clientName = "MARIA",
                     loanProductName = "PERSONAL",
                     totalOverpaid = 0.0,
-                    currency = SavingAccountCurrencyEntity(
+                    currency = Currency(
                         code = "USD",
                         decimalPlaces = 2,
                     ),
-                    summary = LoansAccountSummaryEntity(
+                    loanSummary = LoanSummary(
                         totalOutstanding = 1500.00,
                         totalOverdue = 0.00,
                     ),
-                    status = LoanStatusEntity(
-                        active = true,
-                        pendingApproval = false,
-                        overpaid = false,
-                        value = "Active",
-                    ),
+                    status = LoanStatus.ACTIVE,
                 ),
                 statusUiModel = LoanStatusUiModel(
                     labelRes = Res.string.feature_loan_profile_status_active,
