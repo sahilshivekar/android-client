@@ -9,15 +9,15 @@
  */
 package com.mifos.feature.loan.navigation
 
+import com.mifos.core.model.objects.account.loan.LoanWithAssociations
 import com.mifos.room.entities.accounts.loans.LoanApprovalData
-import com.mifos.room.entities.accounts.loans.LoanWithAssociationsEntity
 import kotlinx.serialization.json.Json
 
 // TODO : Migrate it to type safe while implementing this screen
 sealed class LoanScreens(val route: String) {
 
     data object LoanApprovalScreen : LoanScreens("loan_approval_screen/{arg}") {
-        fun argument(loanAccountNumber: Int, loanWithAssociations: LoanWithAssociationsEntity): String {
+        fun argument(loanAccountNumber: Int, loanWithAssociations: LoanWithAssociations): String {
             val arg = LoanApprovalData(loanAccountNumber, loanWithAssociations)
             val loanApprovalDataInJson = Json.encodeToString(LoanApprovalData.serializer(), arg)
 

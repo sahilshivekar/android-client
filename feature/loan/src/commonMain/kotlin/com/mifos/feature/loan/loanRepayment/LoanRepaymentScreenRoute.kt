@@ -12,7 +12,7 @@ package com.mifos.feature.loan.loanRepayment
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import com.mifos.room.entities.accounts.loans.LoanWithAssociationsEntity
+import com.mifos.core.model.objects.account.loan.LoanWithAssociations
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -34,14 +34,16 @@ fun NavGraphBuilder.loanRepaymentScreen(
     }
 }
 
-fun NavController.navigateToLoanRepaymentScreen(loanWithAssociations: LoanWithAssociationsEntity) {
+fun NavController.navigateToLoanRepaymentScreen(loanWithAssociations: LoanWithAssociations) {
+    val loanId = loanWithAssociations.id ?: return
+
     navigate(
         LoanRepaymentScreenRoute(
-            clientName = loanWithAssociations.clientName,
-            loanId = loanWithAssociations.id,
-            loanAccountNumber = loanWithAssociations.accountNo,
-            loanProductName = loanWithAssociations.loanProductName,
-            amountInArrears = loanWithAssociations.summary.totalOverdue,
+            clientName = loanWithAssociations.clientName ?: "",
+            loanId = loanId,
+            loanAccountNumber = loanWithAssociations.accountNo ?: "",
+            loanProductName = loanWithAssociations.loanProductName ?: "",
+            amountInArrears = loanWithAssociations.loanSummary?.totalOverdue,
         ),
     )
 }

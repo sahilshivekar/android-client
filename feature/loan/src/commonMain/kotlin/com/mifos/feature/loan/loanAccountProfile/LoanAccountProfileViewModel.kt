@@ -29,10 +29,10 @@ import com.mifos.core.common.utils.DataState
 import com.mifos.core.data.repository.LoanAccountSummaryRepository
 import com.mifos.core.data.util.NetworkMonitor
 import com.mifos.core.designsystem.theme.AppColors
+import com.mifos.core.model.objects.account.loan.LoanStatus
+import com.mifos.core.model.objects.account.loan.LoanWithAssociations
 import com.mifos.core.ui.util.BaseViewModel
 import com.mifos.feature.loan.loanAccountProfile.components.LoanAccountProfileActionItem
-import com.mifos.room.entities.accounts.loans.LoanStatusEntity
-import com.mifos.room.entities.accounts.loans.LoanWithAssociationsEntity
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -156,12 +156,12 @@ internal class LoanAccountProfileViewModel(
         }
     }
 
-    private fun LoanStatusEntity?.toProfileStatus(): LoanProfileStatus {
+    private fun LoanStatus?.toProfileStatus(): LoanProfileStatus {
         if (this == null) return LoanProfileStatus.UNKNOWN
-        return when {
-            this.pendingApproval == true -> LoanProfileStatus.PENDING
-            this.overpaid == true -> LoanProfileStatus.OVERPAID
-            this.active == true -> LoanProfileStatus.ACTIVE
+        return when (this) {
+            LoanStatus.PENDING -> LoanProfileStatus.PENDING
+            LoanStatus.OVERPAID -> LoanProfileStatus.OVERPAID
+            LoanStatus.ACTIVE -> LoanProfileStatus.ACTIVE
             else -> LoanProfileStatus.UNKNOWN
         }
     }
@@ -175,7 +175,7 @@ enum class LoanProfileStatus {
 }
 
 data class LoanAccountState(
-    val loanAccount: LoanWithAssociationsEntity? = null,
+    val loanAccount: LoanWithAssociations? = null,
     val dialogState: DialogState? = null,
     val networkConnection: Boolean = false,
     val statusUiModel: LoanStatusUiModel? = null,
