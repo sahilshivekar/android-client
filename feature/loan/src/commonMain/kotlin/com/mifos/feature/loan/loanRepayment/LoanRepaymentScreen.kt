@@ -728,6 +728,7 @@ private fun ShowLoanRepaymentConfirmationDialog(
                         transactionDate = DateHelper.getDateAsStringFromLong(
                             repaymentDate,
                         ),
+                        externalId = externalId.ifBlank { null },
                         checkNumber = chequeNumber.ifBlank { null },
                         routingCode = routingCode.ifBlank { null },
                         receiptNumber = receiptNumber.ifBlank { null },
