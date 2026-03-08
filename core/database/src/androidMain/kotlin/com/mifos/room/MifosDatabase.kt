@@ -12,6 +12,9 @@ package com.mifos.room
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import com.mifos.room.dao.CenterDao
 import com.mifos.room.dao.ChargeDao
 import com.mifos.room.dao.ClientDao

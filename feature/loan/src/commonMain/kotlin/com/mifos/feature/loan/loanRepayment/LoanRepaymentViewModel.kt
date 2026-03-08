@@ -24,31 +24,70 @@ import com.mifos.core.ui.util.BaseViewModel
 import com.mifos.room.entities.accounts.loans.LoanRepaymentRequestEntity
 import com.mifos.room.entities.accounts.loans.LoanRepaymentResponseEntity
 import com.mifos.room.entities.templates.loans.LoanRepaymentTemplateEntity
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalCoroutinesApi::class, ExperimentalTime::class)
 class LoanRepaymentViewModel(
     savedStateHandle: SavedStateHandle,
     private val repository: LoanRepaymentRepository,
 ) : BaseViewModel<LoanRepaymentUiState, LoanRepaymentEvent, LoanRepaymentAction>(
-    initialState = LoanRepaymentUiState(),
+    initialState = LoanRepaymentUiState(
+        repaymentDate = Clock.System.now().toEpochMilliseconds(),
+    ),
 ) {
 
     private val args = savedStateHandle.toRoute<LoanRepaymentScreenRoute>()
     private val _loanDetailsState = MutableStateFlow(LoanDetails())
     val loanDetailsState = _loanDetailsState.asStateFlow()
 
+    private val retryTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     init {
-        mutableStateFlow.value = mutableStateFlow.value.copy(
-            repaymentDate = currentEpochMillis(),
-        )
-        trySendAction(LoanRepaymentAction.CheckDatabaseLoanRepayment)
+        observeDatabaseAndTemplate()
     }
 
-    @OptIn(ExperimentalTime::class)
-    private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()
+    private fun observeDatabaseAndTemplate() {
+        viewModelScope.launch {
+            retryTrigger
+                .onStart { emit(Unit) }
+                .flatMapLatest {
+                    repository.getDatabaseLoanRepaymentByLoanId(arg.loanId)
+                }
+                .collect { dbState ->
+                    when (dbState) {
+                        is DataState.Loading -> {
+                            mutableStateFlow.value = state.copy(isLoading = true, error = null)
+                        }
+                        is DataState.Error -> {
+                            mutableStateFlow.value = state.copy(
+                                isLoading = false,
+                                hasCheckedDatabase = true,
+                                error = Res.string.feature_loan_failed_to_load_loan_repayment,
+                            )
+                        }
+                        is DataState.Success -> {
+                            val existsInDatabase = dbState.data != null
+                            mutableStateFlow.value = state.copy(
+                                isLoading = false,
+                                error = null,
+                                hasCheckedDatabase = true,
+                                loanRepaymentExistsInDatabase = existsInDatabase,
+                            )
+                            if (!existsInDatabase) {
+                                loadLoanRepaymentTemplate()
+                            }
+                        }
+                    }
+                }
+        }
+    }
 
     override fun handleAction(action: LoanRepaymentAction) {
         when (action) {
