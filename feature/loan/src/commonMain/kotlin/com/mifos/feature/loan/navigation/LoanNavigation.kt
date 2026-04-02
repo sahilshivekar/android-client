@@ -18,6 +18,10 @@ import com.mifos.core.common.utils.Constants
 import com.mifos.feature.loan.amountTransfer.amountTransferScreen
 import com.mifos.feature.loan.amountTransfer.navigateToTransferScreen
 import com.mifos.feature.loan.createLoanReschedules.loanRescheduleFormScreen
+import com.mifos.feature.loan.loanAccountAction.loanAccountActionDestination
+import com.mifos.feature.loan.loanAccountAction.navigateToLoanAccountActionScreen
+import com.mifos.feature.loan.loanAccountAction.payments.loanPaymentsActionDestination
+import com.mifos.feature.loan.loanAccountAction.payments.navigateToLoanPaymentsAction
 import com.mifos.feature.loan.loanAccountProfile.loanProfileAccountDestination
 import com.mifos.feature.loan.loanAccountSummary.loanAccountSummary
 import com.mifos.feature.loan.loanApproval.LoanAccountApprovalScreen
@@ -94,7 +98,23 @@ fun NavGraphBuilder.loanDestination(
             onDocumentsClicked(loanId, Constants.ENTITY_TYPE_LOANS)
         },
         navigateToTransferScreen = navController::navigateToTransferScreen,
+        navigateToLoanAction = navController::navigateToLoanAccountActionScreen,
         navigateToReschedules = navController::navigateToLoanReschedulesScreen,
+    )
+
+    loanAccountActionDestination(
+        navController = navController,
+        onNavigateBack = navController::popBackStack,
+        navigateToPaymentsActionScreen = navController::navigateToLoanPaymentsAction,
+    )
+
+    loanPaymentsActionDestination(
+        navController = navController,
+        onNavigateBack = navController::popBackStack,
+        onGoodwillCreditClick = {},
+        onInterestPaymentWaiverClick = {},
+        onPaymentRefundClick = {},
+        onMerchantIssuedRefundClick = {},
     )
 
     amountTransferScreen(
