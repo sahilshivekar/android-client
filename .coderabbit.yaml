@@ -93,6 +93,11 @@ reviews:
     - path: "**/*Screen.kt"
       instructions: |
         Screen architecture rules:
+        - *ScreenContent:
+          - render UI from state
+          - trigger actions via a consolidated onAction lambda
+          - MUST NOT pass multiple separate lambda functions for different UI interactions; 
+            prefer a single onAction: (FeatureAction) -> Unit.
         
         Each screen must follow 2-layer structure:
         1. Layer 1 (Stateless/Entry Overload):
