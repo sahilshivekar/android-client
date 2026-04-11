@@ -73,7 +73,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -90,10 +89,10 @@ import com.mifos.core.designsystem.component.MifosTextFieldDropdown
 import com.mifos.core.designsystem.theme.DesignToken
 import com.mifos.core.ui.components.MifosCheckBox
 import com.mifos.core.ui.components.MifosProgressIndicator
+import com.mifos.core.ui.util.EventsEffect
 import com.mifos.room.entities.PaymentTypeOptionEntity
 import com.mifos.room.entities.accounts.loans.LoanRepaymentRequestEntity
 import com.mifos.room.entities.templates.loans.LoanRepaymentTemplateEntity
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -112,23 +111,18 @@ internal fun LoanRepaymentScreen(
 ) {
     val uiState by viewmodel.stateFlow.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        viewmodel.eventFlow.collect { event ->
-            when (event) {
-                is LoanRepaymentEvent.PaymentSubmittedSuccessfully -> {
-                    if (event.response != null) {
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = getString(
-                                    Res.string.feature_loan_payment_success_message,
-                                    event.response.resourceId.toString(),
-                                ),
-                            )
-                            navigateBack()
-                        }
-                    }
+    EventsEffect(viewmodel.eventFlow) { event ->
+        when (event) {
+            is LoanRepaymentEvent.PaymentSubmittedSuccessfully -> {
+                if (event.response != null) {
+                    snackbarHostState.showSnackbar(
+                        message = getString(
+                            Res.string.feature_loan_payment_success_message,
+                            event.response.resourceId.toString(),
+                        ),
+                    )
+                    navigateBack()
                 }
             }
         }
@@ -629,6 +623,8 @@ private fun LoanRepaymentContent(
                 Text(text = stringResource(Res.string.feature_loan_review_payment))
             }
         }
+
+        Spacer(modifier = Modifier.height(KptTheme.spacing.md))
     }
 }
 
