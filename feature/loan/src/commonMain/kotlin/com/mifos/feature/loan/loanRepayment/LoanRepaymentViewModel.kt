@@ -47,6 +47,7 @@ internal class LoanRepaymentViewModel(
 
     private val args = savedStateHandle.toRoute<LoanRepaymentScreenRoute>()
     private val retryTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private var isObservingDatabase = false
 
     init {
         if (args.loanAccountNumber.isEmpty()) {
@@ -182,6 +183,8 @@ internal class LoanRepaymentViewModel(
     }
 
     private fun observeDatabaseAndTemplate() {
+        if (isObservingDatabase) return
+        isObservingDatabase = true
         viewModelScope.launch {
             retryTrigger
                 .onStart { emit(Unit) }
