@@ -18,15 +18,10 @@ import com.mifos.core.common.utils.DataState
 import com.mifos.core.common.utils.DateHelper
 import com.mifos.core.data.repository.LoanRepaymentScheduleRepository
 import com.mifos.core.model.objects.account.loan.Period
-import com.mifos.core.model.objects.account.loan.RepaymentSchedule
 import com.mifos.core.model.objects.account.loan.RepaymentScheduleRowData
-import com.mifos.core.model.objects.account.loan.RepaymentScheduleTableData
 import com.mifos.core.model.objects.account.loan.RepaymentScheduleTotalsData
-import com.mifos.room.entities.accounts.loans.LoanWithAssociationsEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
