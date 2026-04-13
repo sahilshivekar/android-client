@@ -30,7 +30,6 @@ import androidclient.feature.loan.generated.resources.feature_loan_loan_in_arrea
 import androidclient.feature.loan.generated.resources.feature_loan_loan_repayment
 import androidclient.feature.loan.generated.resources.feature_loan_no_penalties_found
 import androidclient.feature.loan.generated.resources.feature_loan_note
-import androidclient.feature.loan.generated.resources.feature_loan_payment_failed
 import androidclient.feature.loan.generated.resources.feature_loan_payment_success_message
 import androidclient.feature.loan.generated.resources.feature_loan_payment_success_title
 import androidclient.feature.loan.generated.resources.feature_loan_payment_type
@@ -102,8 +101,6 @@ import org.jetbrains.compose.ui.tooling.preview.PreviewParameter
 import org.jetbrains.compose.ui.tooling.preview.PreviewParameterProvider
 import org.koin.compose.viewmodel.koinViewModel
 import template.core.base.designsystem.theme.KptTheme
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 
 @Composable
 internal fun LoanRepaymentScreen(
@@ -240,7 +237,7 @@ internal fun LoanRepaymentScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LoanRepaymentContent(
     uiState: LoanRepaymentUiState,
@@ -252,9 +249,7 @@ private fun LoanRepaymentContent(
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = uiState.repaymentDate,
         selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                return utcTimeMillis >= Clock.System.now().toEpochMilliseconds()
-            }
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean = true
         },
     )
     val scrollState = rememberScrollState()
@@ -448,7 +443,11 @@ private fun LoanRepaymentContent(
 
         MifosOutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
-            value = uiState.total.toString(),
+            value = CurrencyFormatter.format(
+                uiState.total,
+                template.currency?.code,
+                template.currency?.decimalPlaces,
+            ),
             onValueChange = { },
             label = stringResource(Res.string.feature_loan_total),
             readOnly = true,
@@ -642,14 +641,18 @@ private fun LoanRepaymentConfirmationDialog(
                     label = stringResource(Res.string.feature_loan_amount),
                     value = uiState.amount,
                 )
-                LabelValueText(
-                    label = stringResource(Res.string.feature_loan_additional_payment),
-                    value = uiState.additionalPayment,
-                )
-                LabelValueText(
-                    label = stringResource(Res.string.feature_loan_loan_fees),
-                    value = uiState.fees,
-                )
+                if (uiState.additionalPayment.isNotBlank()) {
+                    LabelValueText(
+                        label = stringResource(Res.string.feature_loan_additional_payment),
+                        value = uiState.additionalPayment,
+                    )
+                }
+                if (uiState.fees.isNotBlank()) {
+                    LabelValueText(
+                        label = stringResource(Res.string.feature_loan_loan_fees),
+                        value = uiState.fees,
+                    )
+                }
                 LabelValueText(
                     label = stringResource(Res.string.feature_loan_total),
                     value = uiState.total.toString(),

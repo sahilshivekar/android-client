@@ -263,6 +263,7 @@ internal class LoanRepaymentViewModel(
 
             val s = state
             val request = LoanRepaymentRequestEntity(
+                loanId = s.loanId,
                 accountNumber = s.accountNumber.ifBlank { s.loanAccountNumber },
                 paymentTypeId = s.paymentTypeId.toString(),
                 dateFormat = "dd-MM-yyyy",
