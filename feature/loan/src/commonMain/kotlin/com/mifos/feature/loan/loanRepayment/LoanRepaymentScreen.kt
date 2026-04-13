@@ -19,6 +19,7 @@ import androidclient.feature.loan.generated.resources.feature_loan_cheque_number
 import androidclient.feature.loan.generated.resources.feature_loan_dialog_action_ok
 import androidclient.feature.loan.generated.resources.feature_loan_dialog_action_pay_now
 import androidclient.feature.loan.generated.resources.feature_loan_dialog_message_sync_transaction
+import androidclient.feature.loan.generated.resources.feature_loan_error_title
 import androidclient.feature.loan.generated.resources.feature_loan_external_id_field
 import androidclient.feature.loan.generated.resources.feature_loan_failed_to_load_loan_repayment
 import androidclient.feature.loan.generated.resources.feature_loan_fees
@@ -29,7 +30,9 @@ import androidclient.feature.loan.generated.resources.feature_loan_loan_in_arrea
 import androidclient.feature.loan.generated.resources.feature_loan_loan_repayment
 import androidclient.feature.loan.generated.resources.feature_loan_no_penalties_found
 import androidclient.feature.loan.generated.resources.feature_loan_note
+import androidclient.feature.loan.generated.resources.feature_loan_payment_failed
 import androidclient.feature.loan.generated.resources.feature_loan_payment_success_message
+import androidclient.feature.loan.generated.resources.feature_loan_payment_success_title
 import androidclient.feature.loan.generated.resources.feature_loan_payment_type
 import androidclient.feature.loan.generated.resources.feature_loan_penalties
 import androidclient.feature.loan.generated.resources.feature_loan_principal
@@ -64,12 +67,10 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.SelectableDates
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,129 +90,115 @@ import com.mifos.core.designsystem.component.MifosTextFieldDropdown
 import com.mifos.core.designsystem.theme.DesignToken
 import com.mifos.core.ui.components.MifosCheckBox
 import com.mifos.core.ui.components.MifosProgressIndicator
+import com.mifos.core.ui.components.MifosProgressIndicatorOverlay
+import com.mifos.core.ui.components.MifosStatusDialog
+import com.mifos.core.ui.components.ResultStatus
 import com.mifos.core.ui.util.EventsEffect
 import com.mifos.room.entities.PaymentTypeOptionEntity
-import com.mifos.room.entities.accounts.loans.LoanRepaymentRequestEntity
 import com.mifos.room.entities.templates.loans.LoanRepaymentTemplateEntity
-import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.jetbrains.compose.ui.tooling.preview.PreviewParameter
 import org.jetbrains.compose.ui.tooling.preview.PreviewParameterProvider
 import org.koin.compose.viewmodel.koinViewModel
-import kotlin.math.pow
-import kotlin.math.roundToLong
+import template.core.base.designsystem.theme.KptTheme
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 @Composable
 internal fun LoanRepaymentScreen(
     navigateBack: () -> Unit,
-    viewmodel: LoanRepaymentViewModel = koinViewModel(),
+    viewModel: LoanRepaymentViewModel = koinViewModel(),
 ) {
-    val uiState by viewmodel.stateFlow.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val uiState by viewModel.stateFlow.collectAsStateWithLifecycle()
+    val onAction = remember(viewModel) { viewModel::trySendAction }
 
-    EventsEffect(viewmodel.eventFlow) { event ->
+    EventsEffect(viewModel.eventFlow) { event ->
         when (event) {
-            is LoanRepaymentEvent.PaymentSubmittedSuccessfully -> {
-                if (event.response != null) {
-                    snackbarHostState.showSnackbar(
-                        message = getString(
-                            Res.string.feature_loan_payment_success_message,
-                            event.response.resourceId.toString(),
-                        ),
-                    )
-                    navigateBack()
-                }
-            }
+            is LoanRepaymentEvent.NavigateBack -> navigateBack()
         }
     }
 
     LoanRepaymentScreen(
         uiState = uiState,
-        navigateBack = navigateBack,
-        snackbarHostState = snackbarHostState,
-        onAction = remember(viewmodel) { viewmodel::trySendAction },
+        onAction = onAction,
     )
 }
 
 @Composable
 internal fun LoanRepaymentScreen(
     uiState: LoanRepaymentUiState,
-    navigateBack: () -> Unit,
-    snackbarHostState: SnackbarHostState,
-    onRetry: () -> Unit,
-    submitPayment: (request: LoanRepaymentRequestEntity) -> Unit,
-    onLoanRepaymentDoesNotExistInDatabase: () -> Unit,
-    onUpdatePaymentType: (String) -> Unit,
-    onUpdatePaymentTypeWithId: (String, Int) -> Unit,
-    onUpdateAmount: (String) -> Unit,
-    onUpdateAdditionalPayment: (String) -> Unit,
-    onUpdateFees: (String) -> Unit,
-    onUpdateRepaymentDate: (Long) -> Unit,
-    onUpdateShowPaymentDetails: (Boolean) -> Unit,
-    onUpdateAccountNumber: (String) -> Unit,
-    onUpdateExternalId: (String) -> Unit,
-    onUpdateChequeNumber: (String) -> Unit,
-    onUpdateRoutingCode: (String) -> Unit,
-    onUpdateReceiptNumber: (String) -> Unit,
-    onUpdateBankNumber: (String) -> Unit,
-    onUpdateNote: (String) -> Unit,
-    onUpdateWaivePenalties: (Boolean) -> Unit,
+    onAction: (LoanRepaymentAction) -> Unit,
 ) {
+    when (val dialogState = uiState.dialogState) {
+        is LoanRepaymentUiState.DialogState.Success -> {
+            MifosStatusDialog(
+                status = ResultStatus.SUCCESS,
+                btnText = stringResource(Res.string.feature_loan_dialog_action_ok),
+                successTitle = stringResource(Res.string.feature_loan_payment_success_title),
+                successMessage = stringResource(
+                    Res.string.feature_loan_payment_success_message,
+                    dialogState.resourceId?.toString() ?: "",
+                ),
+                failureTitle = "",
+                failureMessage = "",
+                onConfirm = { onAction(LoanRepaymentAction.PaymentSuccess) },
+                showAsDialog = true,
+            )
+        }
+
+        is LoanRepaymentUiState.DialogState.Error -> {
+            MifosStatusDialog(
+                status = ResultStatus.FAILURE,
+                btnText = stringResource(Res.string.feature_loan_dialog_action_ok),
+                successTitle = "",
+                successMessage = "",
+                failureTitle = stringResource(Res.string.feature_loan_error_title),
+                failureMessage = dialogState.message,
+                onConfirm = { onAction(LoanRepaymentAction.DismissDialog) },
+                showAsDialog = true,
+            )
+        }
+
+        null -> Unit
+    }
+
+    if (uiState.showConfirmationDialog) {
+        LoanRepaymentConfirmationDialog(
+            uiState = uiState,
+            onAction = onAction,
+        )
+    }
+
     MifosScaffold(
-        snackbarHostState = snackbarHostState,
-        onBackPressed = navigateBack,
+        onBackPressed = { onAction(LoanRepaymentAction.CancelClicked) },
         title = stringResource(Res.string.feature_loan_loan_repayment),
-    ) {
+    ) { paddingValues ->
         Box(
-            modifier = Modifier.padding(it),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
         ) {
             when {
-                uiState.isLoading -> {
+                uiState.loanRepaymentTemplate == null && uiState.isLoading -> {
                     MifosProgressIndicator()
                 }
 
                 uiState.error != null -> {
                     MifosSweetError(message = stringResource(uiState.error)) {
-                        onRetry()
+                        onAction(LoanRepaymentAction.RetryLoading)
                     }
-                }
-
-                uiState.loanRepaymentTemplate != null -> {
-                    LoanRepaymentContent(
-                        loanRepaymentTemplate = uiState.loanRepaymentTemplate,
-                        uiState = uiState,
-                        navigateBack = navigateBack,
-                        submitPayment = submitPayment,
-                        onUpdatePaymentType = onUpdatePaymentType,
-                        onUpdatePaymentTypeWithId = onUpdatePaymentTypeWithId,
-                        onUpdateAmount = onUpdateAmount,
-                        onUpdateAdditionalPayment = onUpdateAdditionalPayment,
-                        onUpdateFees = onUpdateFees,
-                        onUpdateRepaymentDate = onUpdateRepaymentDate,
-                        onUpdateShowPaymentDetails = onUpdateShowPaymentDetails,
-                        onUpdateAccountNumber = onUpdateAccountNumber,
-                        onUpdateExternalId = onUpdateExternalId,
-                        onUpdateChequeNumber = onUpdateChequeNumber,
-                        onUpdateRoutingCode = onUpdateRoutingCode,
-                        onUpdateReceiptNumber = onUpdateReceiptNumber,
-                        onUpdateBankNumber = onUpdateBankNumber,
-                        onUpdateNote = onUpdateNote,
-                        onUpdateWaivePenalties = onUpdateWaivePenalties,
-                    )
-                }
-
-                uiState.hasCheckedDatabase && !uiState.loanRepaymentExistsInDatabase -> {
-                    onLoanRepaymentDoesNotExistInDatabase()
                 }
 
                 uiState.loanRepaymentExistsInDatabase -> {
                     AlertDialog(
                         onDismissRequest = { },
                         confirmButton = {
-                            TextButton(onClick = { navigateBack() }) {
+                            TextButton(
+                                onClick = {
+                                    onAction(LoanRepaymentAction.CancelClicked)
+                                },
+                            ) {
                                 Text(
                                     text = stringResource(
                                         Res.string.feature_loan_dialog_action_ok,
@@ -230,11 +217,23 @@ internal fun LoanRepaymentScreen(
                         text = {
                             Text(
                                 text = stringResource(
-                                    Res.string.feature_loan_dialog_message_sync_transaction,
+                                    Res.string
+                                        .feature_loan_dialog_message_sync_transaction,
                                 ),
                             )
                         },
                     )
+                }
+
+                uiState.loanRepaymentTemplate != null -> {
+                    LoanRepaymentContent(
+                        uiState = uiState,
+                        onAction = onAction,
+                    )
+
+                    if (uiState.isLoading) {
+                        MifosProgressIndicatorOverlay()
+                    }
                 }
             }
         }
@@ -244,26 +243,11 @@ internal fun LoanRepaymentScreen(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
 private fun LoanRepaymentContent(
-    loanRepaymentTemplate: LoanRepaymentTemplateEntity,
     uiState: LoanRepaymentUiState,
-    navigateBack: () -> Unit,
-    submitPayment: (request: LoanRepaymentRequestEntity) -> Unit,
-    onUpdatePaymentType: (String) -> Unit,
-    onUpdatePaymentTypeWithId: (String, Int) -> Unit,
-    onUpdateAmount: (String) -> Unit,
-    onUpdateAdditionalPayment: (String) -> Unit,
-    onUpdateFees: (String) -> Unit,
-    onUpdateRepaymentDate: (Long) -> Unit,
-    onUpdateShowPaymentDetails: (Boolean) -> Unit,
-    onUpdateAccountNumber: (String) -> Unit,
-    onUpdateExternalId: (String) -> Unit,
-    onUpdateChequeNumber: (String) -> Unit,
-    onUpdateRoutingCode: (String) -> Unit,
-    onUpdateReceiptNumber: (String) -> Unit,
-    onUpdateBankNumber: (String) -> Unit,
-    onUpdateNote: (String) -> Unit,
-    onUpdateWaivePenalties: (Boolean) -> Unit,
+    onAction: (LoanRepaymentAction) -> Unit,
 ) {
+    val template = uiState.loanRepaymentTemplate ?: return
+
     var showDatePickerDialog by rememberSaveable { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = uiState.repaymentDate,
@@ -274,38 +258,6 @@ private fun LoanRepaymentContent(
         },
     )
     val scrollState = rememberScrollState()
-    var showConfirmationDialog by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    if (showConfirmationDialog) {
-        ShowLoanRepaymentConfirmationDialog(
-            onDismiss = { onAction(LoanRepaymentAction.DismissConfirmation) },
-            loanAccountNumber = uiState.loanAccountNumber,
-            paymentTypeId = uiState.paymentTypeId.toString(),
-            repaymentDate = uiState.repaymentDate,
-            paymentType = uiState.paymentType,
-            amount = uiState.amount,
-            additionalPayment = uiState.additionalPayment,
-            fees = uiState.fees,
-            total = calculateTotal(
-                fees = uiState.fees,
-                amount = uiState.amount,
-                additionalPayment = uiState.additionalPayment,
-                penaltyChargesPortion = loanRepaymentTemplate.penaltyChargesPortion ?: 0.0,
-                waivePenalties = uiState.waivePenalties,
-            ).toString(),
-            accountNumber = uiState.accountNumber,
-            externalId = uiState.externalId,
-            chequeNumber = uiState.chequeNumber,
-            routingCode = uiState.routingCode,
-            receiptNumber = uiState.receiptNumber,
-            bankNumber = uiState.bankNumber,
-            note = uiState.note,
-            waivePenalties = uiState.waivePenalties,
-            submitPayment = submitPayment,
-        )
-    }
 
     if (showDatePickerDialog) {
         DatePickerDialog(
@@ -314,7 +266,7 @@ private fun LoanRepaymentContent(
                 TextButton(
                     onClick = {
                         datePickerState.selectedDateMillis?.let {
-                            onUpdateRepaymentDate(it)
+                            onAction(LoanRepaymentAction.OnRepaymentDateChange(it))
                         }
                         showDatePickerDialog = false
                     },
@@ -346,21 +298,24 @@ private fun LoanRepaymentContent(
 
         HorizontalDivider(modifier = Modifier.padding(top = DesignToken.spacing.medium))
 
-        FarApartTextItem(title = uiState.loanProductName, value = uiState.loanId.toString())
+        FarApartTextItem(
+            title = uiState.loanProductName,
+            value = uiState.loanId.toString(),
+        )
         FarApartTextItem(
             title = stringResource(Res.string.feature_loan_loan_in_arrears),
             value = CurrencyFormatter.format(
                 uiState.amountInArrears,
-                loanRepaymentTemplate.currency?.code,
-                loanRepaymentTemplate.currency?.decimalPlaces,
+                template.currency?.code,
+                template.currency?.decimalPlaces,
             ),
         )
         FarApartTextItem(
             title = stringResource(Res.string.feature_loan_loan_amount_due),
             value = CurrencyFormatter.format(
-                loanRepaymentTemplate.amount,
-                loanRepaymentTemplate.currency?.code,
-                loanRepaymentTemplate.currency?.decimalPlaces,
+                template.amount,
+                template.currency?.code,
+                template.currency?.decimalPlaces,
             ),
         )
 
@@ -376,33 +331,33 @@ private fun LoanRepaymentContent(
         FarApartTextItem(
             title = stringResource(Res.string.feature_loan_principal),
             value = CurrencyFormatter.format(
-                loanRepaymentTemplate.principalPortion,
-                loanRepaymentTemplate.currency?.code,
-                loanRepaymentTemplate.currency?.decimalPlaces,
+                template.principalPortion,
+                template.currency?.code,
+                template.currency?.decimalPlaces,
             ),
         )
         FarApartTextItem(
             title = stringResource(Res.string.feature_loan_interest),
             value = CurrencyFormatter.format(
-                loanRepaymentTemplate.interestPortion,
-                loanRepaymentTemplate.currency?.code,
-                loanRepaymentTemplate.currency?.decimalPlaces,
+                template.interestPortion,
+                template.currency?.code,
+                template.currency?.decimalPlaces,
             ),
         )
         FarApartTextItem(
             title = stringResource(Res.string.feature_loan_fees),
             value = CurrencyFormatter.format(
-                loanRepaymentTemplate.feeChargesPortion,
-                loanRepaymentTemplate.currency?.code,
-                loanRepaymentTemplate.currency?.decimalPlaces,
+                template.feeChargesPortion,
+                template.currency?.code,
+                template.currency?.decimalPlaces,
             ),
         )
         FarApartTextItem(
             title = stringResource(Res.string.feature_loan_penalties),
             value = CurrencyFormatter.format(
-                loanRepaymentTemplate.penaltyChargesPortion,
-                loanRepaymentTemplate.currency?.code,
-                loanRepaymentTemplate.currency?.decimalPlaces,
+                template.penaltyChargesPortion,
+                template.currency?.code,
+                template.currency?.decimalPlaces,
             ),
         )
 
@@ -421,18 +376,18 @@ private fun LoanRepaymentContent(
         MifosTextFieldDropdown(
             modifier = Modifier.fillMaxWidth(),
             value = uiState.paymentType,
-            onValueChanged = { onUpdatePaymentType(it) },
+            onValueChanged = { onAction(LoanRepaymentAction.OnPaymentTypeChange(it)) },
             onOptionSelected = { index, value ->
                 onAction(
                     LoanRepaymentAction.OnPaymentTypeSelected(
                         paymentType = value,
-                        paymentTypeId = loanRepaymentTemplate.paymentTypeOptions
+                        paymentTypeId = template.paymentTypeOptions
                             ?.get(index)?.id ?: 0,
                     ),
                 )
             },
             label = stringResource(Res.string.feature_loan_payment_type),
-            options = loanRepaymentTemplate.paymentTypeOptions?.map { it.name } ?: emptyList(),
+            options = template.paymentTypeOptions?.map { it.name } ?: emptyList(),
             readOnly = true,
         )
 
@@ -453,10 +408,10 @@ private fun LoanRepaymentContent(
         MifosOutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
             value = uiState.amount,
-            onValueChange = { onUpdateAmount(it) },
+            onValueChange = { onAction(LoanRepaymentAction.OnAmountChange(it)) },
             label = stringResource(Res.string.feature_loan_amount),
             keyboardType = KeyboardType.Number,
-            prefix = loanRepaymentTemplate.currency?.code?.let { code ->
+            prefix = template.currency?.code?.let { code ->
                 { Text(text = "$code ") }
             },
         )
@@ -466,10 +421,12 @@ private fun LoanRepaymentContent(
         MifosOutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
             value = uiState.additionalPayment,
-            onValueChange = { onUpdateAdditionalPayment(it) },
+            onValueChange = {
+                onAction(LoanRepaymentAction.OnAdditionalPaymentChange(it))
+            },
             label = stringResource(Res.string.feature_loan_additional_payment),
             keyboardType = KeyboardType.Number,
-            prefix = loanRepaymentTemplate.currency?.code?.let { code ->
+            prefix = template.currency?.code?.let { code ->
                 { Text(text = "$code ") }
             },
         )
@@ -479,10 +436,10 @@ private fun LoanRepaymentContent(
         MifosOutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
             value = uiState.fees,
-            onValueChange = { onUpdateFees(it) },
+            onValueChange = { onAction(LoanRepaymentAction.OnFeesChange(it)) },
             label = stringResource(Res.string.feature_loan_loan_fees),
             keyboardType = KeyboardType.Number,
-            prefix = loanRepaymentTemplate.currency?.code?.let { code ->
+            prefix = template.currency?.code?.let { code ->
                 { Text(text = "$code ") }
             },
         )
@@ -491,17 +448,11 @@ private fun LoanRepaymentContent(
 
         MifosOutlinedTextField(
             modifier = Modifier.fillMaxWidth(),
-            value = calculateTotal(
-                fees = uiState.fees,
-                amount = uiState.amount,
-                additionalPayment = uiState.additionalPayment,
-                penaltyChargesPortion = loanRepaymentTemplate.penaltyChargesPortion ?: 0.0,
-                waivePenalties = uiState.waivePenalties,
-            ).toString(),
+            value = uiState.total.toString(),
             onValueChange = { },
             label = stringResource(Res.string.feature_loan_total),
             readOnly = true,
-            prefix = loanRepaymentTemplate.currency?.code?.let { code ->
+            prefix = template.currency?.code?.let { code ->
                 { Text(text = "$code ") }
             },
         )
@@ -511,7 +462,9 @@ private fun LoanRepaymentContent(
         MifosCheckBox(
             text = stringResource(Res.string.feature_loan_show_payment_details),
             checked = uiState.showPaymentDetails,
-            onCheckChanged = onUpdateShowPaymentDetails,
+            onCheckChanged = {
+                onAction(LoanRepaymentAction.OnShowPaymentDetailsChange(it))
+            },
         )
 
         if (uiState.showPaymentDetails) {
@@ -520,7 +473,9 @@ private fun LoanRepaymentContent(
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = uiState.accountNumber,
-                onValueChange = onUpdateAccountNumber,
+                onValueChange = {
+                    onAction(LoanRepaymentAction.OnAccountNumberChange(it))
+                },
                 label = stringResource(Res.string.feature_loan_account_number),
                 error = null,
             )
@@ -530,7 +485,9 @@ private fun LoanRepaymentContent(
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = uiState.externalId,
-                onValueChange = onUpdateExternalId,
+                onValueChange = {
+                    onAction(LoanRepaymentAction.OnExternalIdChange(it))
+                },
                 label = stringResource(Res.string.feature_loan_external_id_field),
                 error = null,
             )
@@ -540,7 +497,9 @@ private fun LoanRepaymentContent(
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = uiState.chequeNumber,
-                onValueChange = onUpdateChequeNumber,
+                onValueChange = {
+                    onAction(LoanRepaymentAction.OnChequeNumberChange(it))
+                },
                 label = stringResource(Res.string.feature_loan_cheque_number),
                 error = null,
             )
@@ -550,7 +509,9 @@ private fun LoanRepaymentContent(
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = uiState.routingCode,
-                onValueChange = onUpdateRoutingCode,
+                onValueChange = {
+                    onAction(LoanRepaymentAction.OnRoutingCodeChange(it))
+                },
                 label = stringResource(Res.string.feature_loan_routing_code),
                 error = null,
             )
@@ -560,7 +521,9 @@ private fun LoanRepaymentContent(
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = uiState.receiptNumber,
-                onValueChange = onUpdateReceiptNumber,
+                onValueChange = {
+                    onAction(LoanRepaymentAction.OnReceiptNumberChange(it))
+                },
                 label = stringResource(Res.string.feature_loan_receipt_number),
                 error = null,
             )
@@ -570,7 +533,9 @@ private fun LoanRepaymentContent(
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = uiState.bankNumber,
-                onValueChange = onUpdateBankNumber,
+                onValueChange = {
+                    onAction(LoanRepaymentAction.OnBankNumberChange(it))
+                },
                 label = stringResource(Res.string.feature_loan_bank_number),
                 error = null,
             )
@@ -580,7 +545,7 @@ private fun LoanRepaymentContent(
             MifosOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = uiState.note,
-                onValueChange = onUpdateNote,
+                onValueChange = { onAction(LoanRepaymentAction.OnNoteChange(it)) },
                 label = stringResource(Res.string.feature_loan_note),
                 error = null,
                 maxLines = 4,
@@ -589,11 +554,13 @@ private fun LoanRepaymentContent(
 
         Spacer(modifier = Modifier.height(DesignToken.spacing.large))
 
-        if ((loanRepaymentTemplate.penaltyChargesPortion ?: 0.0) > 0.0) {
+        if ((template.penaltyChargesPortion ?: 0.0) > 0.0) {
             MifosCheckBox(
                 text = stringResource(Res.string.feature_loan_waive_penalties),
                 checked = uiState.waivePenalties,
-                onCheckChanged = onUpdateWaivePenalties,
+                onCheckChanged = {
+                    onAction(LoanRepaymentAction.OnWaivePenaltiesChange(it))
+                },
             )
         } else {
             Text(
@@ -611,7 +578,7 @@ private fun LoanRepaymentContent(
         ) {
             Button(
                 modifier = Modifier.heightIn(DesignToken.spacing.dp44),
-                onClick = { navigateBack.invoke() },
+                onClick = { onAction(LoanRepaymentAction.CancelClicked) },
             ) {
                 Text(text = stringResource(Res.string.feature_loan_cancel))
             }
@@ -626,6 +593,115 @@ private fun LoanRepaymentContent(
 
         Spacer(modifier = Modifier.height(KptTheme.spacing.md))
     }
+}
+
+@Composable
+private fun LoanRepaymentConfirmationDialog(
+    uiState: LoanRepaymentUiState,
+    onAction: (LoanRepaymentAction) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = { onAction(LoanRepaymentAction.DismissConfirmation) },
+        confirmButton = {
+            TextButton(
+                onClick = { onAction(LoanRepaymentAction.SubmitPayment) },
+            ) {
+                Text(
+                    text = stringResource(Res.string.feature_loan_dialog_action_pay_now),
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = { onAction(LoanRepaymentAction.DismissConfirmation) },
+            ) {
+                Text(text = stringResource(Res.string.feature_loan_cancel))
+            }
+        },
+        title = {
+            Text(
+                text = stringResource(Res.string.feature_loan_review_payment),
+                style = KptTheme.typography.titleLarge,
+            )
+        },
+        text = {
+            Column {
+                LabelValueText(
+                    label = stringResource(Res.string.feature_loan_account_number),
+                    value = uiState.loanAccountNumber,
+                )
+                LabelValueText(
+                    label = stringResource(Res.string.feature_loan_repayment_date),
+                    value = DateHelper.getDateAsStringFromLong(uiState.repaymentDate),
+                )
+                LabelValueText(
+                    label = stringResource(Res.string.feature_loan_payment_type),
+                    value = uiState.paymentType,
+                )
+                LabelValueText(
+                    label = stringResource(Res.string.feature_loan_amount),
+                    value = uiState.amount,
+                )
+                LabelValueText(
+                    label = stringResource(Res.string.feature_loan_additional_payment),
+                    value = uiState.additionalPayment,
+                )
+                LabelValueText(
+                    label = stringResource(Res.string.feature_loan_loan_fees),
+                    value = uiState.fees,
+                )
+                LabelValueText(
+                    label = stringResource(Res.string.feature_loan_total),
+                    value = uiState.total.toString(),
+                )
+
+                if (uiState.externalId.isNotBlank()) {
+                    LabelValueText(
+                        label = stringResource(
+                            Res.string.feature_loan_external_id_field,
+                        ),
+                        value = uiState.externalId,
+                    )
+                }
+                if (uiState.chequeNumber.isNotBlank()) {
+                    LabelValueText(
+                        label = stringResource(Res.string.feature_loan_cheque_number),
+                        value = uiState.chequeNumber,
+                    )
+                }
+                if (uiState.routingCode.isNotBlank()) {
+                    LabelValueText(
+                        label = stringResource(Res.string.feature_loan_routing_code),
+                        value = uiState.routingCode,
+                    )
+                }
+                if (uiState.receiptNumber.isNotBlank()) {
+                    LabelValueText(
+                        label = stringResource(Res.string.feature_loan_receipt_number),
+                        value = uiState.receiptNumber,
+                    )
+                }
+                if (uiState.bankNumber.isNotBlank()) {
+                    LabelValueText(
+                        label = stringResource(Res.string.feature_loan_bank_number),
+                        value = uiState.bankNumber,
+                    )
+                }
+                if (uiState.note.isNotBlank()) {
+                    LabelValueText(
+                        label = stringResource(Res.string.feature_loan_note),
+                        value = uiState.note,
+                    )
+                }
+                if (uiState.waivePenalties) {
+                    LabelValueText(
+                        label = stringResource(Res.string.feature_loan_waive_penalties),
+                        value = stringResource(Res.string.yes),
+                    )
+                }
+            }
+        },
+    )
 }
 
 @Composable
@@ -657,180 +733,6 @@ private fun LabelValueText(label: String, value: String) {
     )
 }
 
-@Composable
-private fun ShowLoanRepaymentConfirmationDialog(
-    onDismiss: () -> Unit,
-    loanAccountNumber: String,
-    paymentTypeId: String,
-    repaymentDate: Long,
-    paymentType: String,
-    amount: String,
-    additionalPayment: String,
-    fees: String,
-    total: String,
-    accountNumber: String,
-    externalId: String,
-    chequeNumber: String,
-    routingCode: String,
-    receiptNumber: String,
-    bankNumber: String,
-    note: String,
-    waivePenalties: Boolean,
-    submitPayment: (request: LoanRepaymentRequestEntity) -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = { onDismiss() },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onDismiss()
-                    val request = LoanRepaymentRequestEntity(
-                        accountNumber = accountNumber.ifBlank { loanAccountNumber },
-                        paymentTypeId = paymentTypeId,
-                        dateFormat = "dd-MM-yyyy",
-                        locale = "en",
-                        transactionAmount = total,
-                        transactionDate = DateHelper.getDateAsStringFromLong(repaymentDate),
-                        externalId = externalId.ifBlank { null },
-                        checkNumber = chequeNumber.ifBlank { null },
-                        routingCode = routingCode.ifBlank { null },
-                        receiptNumber = receiptNumber.ifBlank { null },
-                        bankNumber = bankNumber.ifBlank { null },
-                        note = note.ifBlank { null },
-                    )
-                    submitPayment.invoke(request)
-                },
-            ) {
-                Text(text = stringResource(Res.string.feature_loan_dialog_action_pay_now))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = { onDismiss() }) {
-                Text(text = stringResource(Res.string.feature_loan_cancel))
-            }
-        },
-        title = {
-            Text(
-                text = stringResource(Res.string.feature_loan_review_payment),
-                style = KptTheme.typography.titleLarge,
-            )
-        },
-        text = {
-            Column {
-                LabelValueText(
-                    label = stringResource(Res.string.feature_loan_account_number),
-                    value = loanAccountNumber,
-                )
-                LabelValueText(
-                    label = stringResource(Res.string.feature_loan_repayment_date),
-                    value = DateHelper.getDateAsStringFromLong(repaymentDate),
-                )
-                LabelValueText(
-                    label = stringResource(Res.string.feature_loan_payment_type),
-                    value = paymentType,
-                )
-                LabelValueText(
-                    label = stringResource(Res.string.feature_loan_amount),
-                    value = amount,
-                )
-                LabelValueText(
-                    label = stringResource(Res.string.feature_loan_additional_payment),
-                    value = additionalPayment,
-                )
-                LabelValueText(
-                    label = stringResource(Res.string.feature_loan_loan_fees),
-                    value = fees,
-                )
-                LabelValueText(
-                    label = stringResource(Res.string.feature_loan_total),
-                    value = total,
-                )
-
-                if (externalId.isNotBlank()) {
-                    LabelValueText(
-                        label = stringResource(Res.string.feature_loan_external_id_field),
-                        value = externalId,
-                    )
-                }
-                if (chequeNumber.isNotBlank()) {
-                    LabelValueText(
-                        label = stringResource(Res.string.feature_loan_cheque_number),
-                        value = chequeNumber,
-                    )
-                }
-                if (routingCode.isNotBlank()) {
-                    LabelValueText(
-                        label = stringResource(Res.string.feature_loan_routing_code),
-                        value = routingCode,
-                    )
-                }
-                if (receiptNumber.isNotBlank()) {
-                    LabelValueText(
-                        label = stringResource(Res.string.feature_loan_receipt_number),
-                        value = receiptNumber,
-                    )
-                }
-                if (bankNumber.isNotBlank()) {
-                    LabelValueText(
-                        label = stringResource(Res.string.feature_loan_bank_number),
-                        value = bankNumber,
-                    )
-                }
-                if (note.isNotBlank()) {
-                    LabelValueText(
-                        label = stringResource(Res.string.feature_loan_note),
-                        value = note,
-                    )
-                }
-                if (waivePenalties) {
-                    LabelValueText(
-                        label = stringResource(Res.string.feature_loan_waive_penalties),
-                        value = stringResource(Res.string.yes),
-                    )
-                }
-            }
-        },
-    )
-}
-
-private fun calculateTotal(
-    fees: String,
-    amount: String,
-    additionalPayment: String,
-    penaltyChargesPortion: Double,
-    waivePenalties: Boolean,
-): Double {
-    fun setValue(value: String): Double {
-        if (value.isEmpty()) return 0.0
-        return try {
-            value.toDouble()
-        } catch (e: NumberFormatException) {
-            0.0
-        }
-    }
-
-    val feesValue = setValue(fees)
-    val amountValue = setValue(amount)
-    val additionalPaymentValue = setValue(additionalPayment)
-    val penaltiesValue = if (waivePenalties) 0.0 else penaltyChargesPortion
-
-    return feesValue + amountValue + additionalPaymentValue + penaltiesValue
-}
-
-private fun isAllFieldsValid(
-    amount: String,
-    additionalPayment: String,
-    fees: String,
-    paymentType: String,
-): Boolean {
-    val amountValid = amount.trim().toDoubleOrNull()?.let { it > 0 } == true
-    val additionalPaymentValid = additionalPayment.isBlank() ||
-        additionalPayment.trim().toDoubleOrNull() != null
-    val feesValid = fees.isBlank() ||
-        fees.trim().toDoubleOrNull() != null
-    return amountValid && additionalPaymentValid && feesValid && paymentType.isNotBlank()
-}
-
 private class LoanRepaymentScreenPreviewProvider :
     PreviewParameterProvider<LoanRepaymentUiState> {
 
@@ -859,7 +761,9 @@ private class LoanRepaymentScreenPreviewProvider :
         get() = sequenceOf(
             LoanRepaymentUiState(loanRepaymentExistsInDatabase = true),
             LoanRepaymentUiState(loanRepaymentTemplate = sampleLoanRepaymentTemplate),
-            LoanRepaymentUiState(error = Res.string.feature_loan_failed_to_load_loan_repayment),
+            LoanRepaymentUiState(
+                error = Res.string.feature_loan_failed_to_load_loan_repayment,
+            ),
             LoanRepaymentUiState(isLoading = true),
         )
 }
@@ -872,25 +776,6 @@ private fun PreviewLoanRepaymentScreen(
 ) {
     LoanRepaymentScreen(
         uiState = loanRepaymentUiState,
-        navigateBack = {},
-        snackbarHostState = SnackbarHostState(),
-        onRetry = {},
-        submitPayment = {},
-        onLoanRepaymentDoesNotExistInDatabase = {},
-        onUpdatePaymentType = {},
-        onUpdatePaymentTypeWithId = { _, _ -> },
-        onUpdateAmount = {},
-        onUpdateAdditionalPayment = {},
-        onUpdateFees = {},
-        onUpdateRepaymentDate = {},
-        onUpdateShowPaymentDetails = {},
-        onUpdateAccountNumber = {},
-        onUpdateExternalId = {},
-        onUpdateChequeNumber = {},
-        onUpdateRoutingCode = {},
-        onUpdateReceiptNumber = {},
-        onUpdateBankNumber = {},
-        onUpdateNote = {},
-        onUpdateWaivePenalties = {},
+        onAction = {},
     )
 }

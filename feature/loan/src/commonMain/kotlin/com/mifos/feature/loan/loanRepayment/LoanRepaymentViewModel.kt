@@ -10,35 +10,31 @@
 package com.mifos.feature.loan.loanRepayment
 
 import androidclient.feature.loan.generated.resources.Res
+import androidclient.feature.loan.generated.resources.feature_loan_error_amount_can_not_be_empty
+import androidclient.feature.loan.generated.resources.feature_loan_error_select_payment_type
 import androidclient.feature.loan.generated.resources.feature_loan_failed_to_load_loan_repayment
-import androidclient.feature.loan.generated.resources.feature_loan_payment_failed
 import androidclient.feature.loan.generated.resources.feature_loan_profile_error_details_not_found
 import androidclient.feature.loan.generated.resources.feature_loan_profile_failed_to_load_loan
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
-import com.mifos.core.common.utils.DataState
-import com.mifos.core.data.repository.LoanAccountSummaryRepository
+import com.mifos.core.common.utils.DateHelper
 import com.mifos.core.data.repository.LoanRepaymentRepository
 import com.mifos.core.ui.util.BaseViewModel
 import com.mifos.room.entities.accounts.loans.LoanRepaymentRequestEntity
-import com.mifos.room.entities.accounts.loans.LoanRepaymentResponseEntity
 import com.mifos.room.entities.templates.loans.LoanRepaymentTemplateEntity
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
-@OptIn(ExperimentalCoroutinesApi::class, ExperimentalTime::class)
+@OptIn(ExperimentalTime::class)
 internal class LoanRepaymentViewModel(
     savedStateHandle: SavedStateHandle,
     private val repository: LoanRepaymentRepository,
-    private val summaryRepository: LoanAccountSummaryRepository,
 ) : BaseViewModel<LoanRepaymentUiState, LoanRepaymentEvent, LoanRepaymentAction>(
     initialState = LoanRepaymentUiState(
         repaymentDate = Clock.System.now().toEpochMilliseconds(),
@@ -46,12 +42,10 @@ internal class LoanRepaymentViewModel(
 ) {
 
     private val args = savedStateHandle.toRoute<LoanRepaymentScreenRoute>()
-    private val retryTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    private var isObservingDatabase = false
 
     init {
         if (args.loanAccountNumber.isEmpty()) {
-            loadLoanById()
+            loadLoanDetails()
         } else {
             mutableStateFlow.update {
                 it.copy(
@@ -62,25 +56,35 @@ internal class LoanRepaymentViewModel(
                     amountInArrears = args.amountInArrears,
                 )
             }
-            observeDatabaseAndTemplate()
+            checkDatabaseAndLoadTemplate()
         }
     }
 
     override fun handleAction(action: LoanRepaymentAction) {
         when (action) {
-            is LoanRepaymentAction.LoadLoanRepaymentTemplate -> loadLoanRepaymentTemplate()
-            is LoanRepaymentAction.CheckDatabaseLoanRepayment -> retryTrigger.tryEmit(Unit)
-            is LoanRepaymentAction.SubmitPayment -> {
-                mutableStateFlow.update { it.copy(showConfirmationDialog = false) }
-                submitPayment(action.request)
-            }
+            is LoanRepaymentAction.RetryLoading -> retryLoading()
             is LoanRepaymentAction.ReviewPayment -> validateAndShowConfirmation()
+            is LoanRepaymentAction.SubmitPayment -> submitPayment()
             is LoanRepaymentAction.DismissConfirmation -> {
                 mutableStateFlow.update { it.copy(showConfirmationDialog = false) }
             }
+
+            is LoanRepaymentAction.CancelClicked -> {
+                sendEvent(LoanRepaymentEvent.NavigateBack)
+            }
+
+            is LoanRepaymentAction.PaymentSuccess -> {
+                sendEvent(LoanRepaymentEvent.NavigateBack)
+            }
+
+            is LoanRepaymentAction.DismissDialog -> {
+                mutableStateFlow.update { it.copy(dialogState = null) }
+            }
+
             is LoanRepaymentAction.OnPaymentTypeChange -> {
                 mutableStateFlow.update { it.copy(paymentType = action.paymentType) }
             }
+
             is LoanRepaymentAction.OnPaymentTypeSelected -> {
                 mutableStateFlow.update {
                     it.copy(
@@ -90,200 +94,213 @@ internal class LoanRepaymentViewModel(
                     )
                 }
             }
+
             is LoanRepaymentAction.OnAmountChange -> {
                 mutableStateFlow.update { it.copy(amount = action.amount, amountError = null) }
             }
+
             is LoanRepaymentAction.OnAdditionalPaymentChange -> {
                 mutableStateFlow.update {
                     it.copy(additionalPayment = action.additionalPayment)
                 }
             }
+
             is LoanRepaymentAction.OnFeesChange -> {
                 mutableStateFlow.update { it.copy(fees = action.fees) }
             }
+
             is LoanRepaymentAction.OnRepaymentDateChange -> {
                 mutableStateFlow.update { it.copy(repaymentDate = action.date) }
             }
+
             is LoanRepaymentAction.OnShowPaymentDetailsChange -> {
                 mutableStateFlow.update { it.copy(showPaymentDetails = action.show) }
             }
+
             is LoanRepaymentAction.OnAccountNumberChange -> {
                 mutableStateFlow.update { it.copy(accountNumber = action.accountNumber) }
             }
+
             is LoanRepaymentAction.OnExternalIdChange -> {
                 mutableStateFlow.update { it.copy(externalId = action.externalId) }
             }
+
             is LoanRepaymentAction.OnChequeNumberChange -> {
                 mutableStateFlow.update { it.copy(chequeNumber = action.chequeNumber) }
             }
+
             is LoanRepaymentAction.OnRoutingCodeChange -> {
                 mutableStateFlow.update { it.copy(routingCode = action.routingCode) }
             }
+
             is LoanRepaymentAction.OnReceiptNumberChange -> {
                 mutableStateFlow.update { it.copy(receiptNumber = action.receiptNumber) }
             }
+
             is LoanRepaymentAction.OnBankNumberChange -> {
                 mutableStateFlow.update { it.copy(bankNumber = action.bankNumber) }
             }
+
             is LoanRepaymentAction.OnNoteChange -> {
                 mutableStateFlow.update { it.copy(note = action.note) }
             }
+
             is LoanRepaymentAction.OnWaivePenaltiesChange -> {
                 mutableStateFlow.update { it.copy(waivePenalties = action.waive) }
             }
         }
     }
 
-    private fun loadLoanById() {
-        viewModelScope.launch {
-            summaryRepository.getLoanById(args.loanId).collect { dataState ->
-                when (dataState) {
-                    is DataState.Loading -> {
-                        mutableStateFlow.update { it.copy(isLoading = true, error = null) }
-                    }
-
-                    is DataState.Success -> {
-                        val loan = dataState.data
-                        if (loan == null) {
-                            mutableStateFlow.update {
-                                it.copy(
-                                    isLoading = false,
-                                    error = Res.string
-                                        .feature_loan_profile_error_details_not_found,
-                                )
-                            }
-                            return@collect
-                        }
-                        mutableStateFlow.update {
-                            it.copy(
-                                isLoading = false,
-                                error = null,
-                                loanId = loan.id,
-                                clientName = loan.clientName,
-                                loanProductName = loan.loanProductName,
-                                amountInArrears = loan.summary.totalOverdue,
-                                loanAccountNumber = loan.accountNo,
-                            )
-                        }
-                        observeDatabaseAndTemplate()
-                    }
-
-                    is DataState.Error -> {
-                        mutableStateFlow.update {
-                            it.copy(
-                                isLoading = false,
-                                error = Res.string
-                                    .feature_loan_profile_failed_to_load_loan,
-                            )
-                        }
-                    }
-                }
-            }
+    private fun retryLoading() {
+        if (args.loanAccountNumber.isEmpty()) {
+            loadLoanDetails()
+        } else {
+            checkDatabaseAndLoadTemplate()
         }
     }
 
-    private fun observeDatabaseAndTemplate() {
-        if (isObservingDatabase) return
-        isObservingDatabase = true
-        viewModelScope.launch {
-            retryTrigger
-                .onStart { emit(Unit) }
-                .flatMapLatest {
-                    repository.getDatabaseLoanRepaymentByLoanId(args.loanId)
-                }
-                .collect { dbState ->
-                    when (dbState) {
-                        is DataState.Loading -> {
-                            mutableStateFlow.update {
-                                it.copy(isLoading = true, error = null)
-                            }
-                        }
-
-                        is DataState.Error -> {
-                            mutableStateFlow.update {
-                                it.copy(
-                                    isLoading = false,
-                                    hasCheckedDatabase = true,
-                                    error = Res.string
-                                        .feature_loan_failed_to_load_loan_repayment,
-                                )
-                            }
-                        }
-
-                        is DataState.Success -> {
-                            val existsInDatabase = dbState.data != null
-                            mutableStateFlow.update {
-                                it.copy(
-                                    isLoading = false,
-                                    error = null,
-                                    hasCheckedDatabase = true,
-                                    loanRepaymentExistsInDatabase = existsInDatabase,
-                                )
-                            }
-                            if (!existsInDatabase) {
-                                loadLoanRepaymentTemplate()
-                            }
-                        }
-                    }
-                }
-        }
-    }
-
-    private fun loadLoanRepaymentTemplate() {
-        viewModelScope.launch {
-            repository.getLoanRepayTemplate(args.loanId).collect { dataState ->
-                when (dataState) {
-                    is DataState.Loading -> {
-                        mutableStateFlow.update {
-                            it.copy(isLoading = true, error = null)
-                        }
-                    }
-
-                    is DataState.Error -> {
-                        mutableStateFlow.update {
-                            it.copy(
-                                isLoading = false,
-                                error = Res.string
-                                    .feature_loan_failed_to_load_loan_repayment,
-                            )
-                        }
-                    }
-
-                    is DataState.Success -> {
-                        mutableStateFlow.update {
-                            it.copy(
-                                isLoading = false,
-                                error = null,
-                                loanRepaymentTemplate = dataState.data
-                                    ?: LoanRepaymentTemplateEntity(),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun submitPayment(request: LoanRepaymentRequestEntity) {
+    private fun loadLoanDetails() {
         viewModelScope.launch {
             mutableStateFlow.update { it.copy(isLoading = true, error = null) }
-
             try {
-                val response = repository.submitPayment(args.loanId, request)
-                mutableStateFlow.update { it.copy(isLoading = false) }
-                sendEvent(LoanRepaymentEvent.PaymentSubmittedSuccessfully(response))
+                val loan = repository.getLoanById(args.loanId)
+                if (loan == null) {
+                    mutableStateFlow.update {
+                        it.copy(
+                            isLoading = false,
+                            error = Res.string
+                                .feature_loan_profile_error_details_not_found,
+                        )
+                    }
+                    return@launch
+                }
+                mutableStateFlow.update {
+                    it.copy(
+                        loanId = loan.id,
+                        clientName = loan.clientName,
+                        loanProductName = loan.loanProductName,
+                        amountInArrears = loan.summary.totalOverdue,
+                        loanAccountNumber = loan.accountNo,
+                    )
+                }
+                checkDatabaseAndLoadTemplateInternal()
             } catch (e: Exception) {
                 mutableStateFlow.update {
                     it.copy(
                         isLoading = false,
-                        error = Res.string.feature_loan_payment_failed,
+                        error = Res.string
+                            .feature_loan_profile_failed_to_load_loan,
                     )
                 }
             }
         }
     }
 
-    private fun checkDatabaseLoanRepaymentByLoanId() {
+    private fun checkDatabaseAndLoadTemplate() {
+        viewModelScope.launch {
+            checkDatabaseAndLoadTemplateInternal()
+        }
+    }
+
+    private suspend fun checkDatabaseAndLoadTemplateInternal() {
+        mutableStateFlow.update { it.copy(isLoading = true, error = null) }
+        try {
+            val existingRepayment =
+                repository.getDatabaseLoanRepaymentByLoanId(args.loanId)
+            if (existingRepayment != null) {
+                mutableStateFlow.update {
+                    it.copy(
+                        isLoading = false,
+                        loanRepaymentExistsInDatabase = true,
+                    )
+                }
+                return
+            }
+            loadTemplate()
+        } catch (e: Exception) {
+            mutableStateFlow.update {
+                it.copy(
+                    isLoading = false,
+                    error = Res.string.feature_loan_failed_to_load_loan_repayment,
+                )
+            }
+        }
+    }
+
+    private suspend fun loadTemplate() {
+        try {
+            val template = repository.getLoanRepayTemplate(args.loanId)
+                ?: LoanRepaymentTemplateEntity()
+            val baseAmount =
+                (template.principalPortion ?: 0.0) + (template.interestPortion ?: 0.0)
+            val feesAmount = template.feeChargesPortion ?: 0.0
+
+            mutableStateFlow.update {
+                it.copy(
+                    isLoading = false,
+                    error = null,
+                    loanRepaymentTemplate = template,
+                    amount = if (baseAmount > 0.0) baseAmount.toString() else "",
+                    fees = if (feesAmount > 0.0) feesAmount.toString() else "",
+                )
+            }
+        } catch (e: Exception) {
+            mutableStateFlow.update {
+                it.copy(
+                    isLoading = false,
+                    error = Res.string.feature_loan_failed_to_load_loan_repayment,
+                )
+            }
+        }
+    }
+
+    private fun submitPayment() {
+        if (state.isLoading) return
+        viewModelScope.launch {
+            mutableStateFlow.update {
+                it.copy(isLoading = true, showConfirmationDialog = false)
+            }
+
+            val s = state
+            val request = LoanRepaymentRequestEntity(
+                accountNumber = s.accountNumber.ifBlank { s.loanAccountNumber },
+                paymentTypeId = s.paymentTypeId.toString(),
+                dateFormat = "dd-MM-yyyy",
+                locale = "en",
+                transactionAmount = s.total.toString(),
+                transactionDate = DateHelper.getDateAsStringFromLong(s.repaymentDate),
+                externalId = s.externalId.ifBlank { null },
+                checkNumber = s.chequeNumber.ifBlank { null },
+                routingCode = s.routingCode.ifBlank { null },
+                receiptNumber = s.receiptNumber.ifBlank { null },
+                bankNumber = s.bankNumber.ifBlank { null },
+                note = s.note.ifBlank { null },
+            )
+
+            try {
+                val response = repository.submitPayment(args.loanId, request)
+                mutableStateFlow.update {
+                    it.copy(
+                        isLoading = false,
+                        dialogState = LoanRepaymentUiState.DialogState.Success(
+                            resourceId = response.resourceId,
+                        ),
+                    )
+                }
+            } catch (e: Exception) {
+                mutableStateFlow.update {
+                    it.copy(
+                        isLoading = false,
+                        dialogState = LoanRepaymentUiState.DialogState.Error(
+                            message = e.message ?: "An error occurred",
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    private fun validateAndShowConfirmation() {
         viewModelScope.launch {
             val currentState = state
             val amountValid =
@@ -320,88 +337,15 @@ internal class LoanRepaymentViewModel(
             }
         }
     }
-
-    fun updatePaymentType(paymentType: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(paymentType = paymentType)
-    }
-
-    fun updatePaymentTypeWithId(paymentType: String, paymentTypeId: Int) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(
-            paymentType = paymentType,
-            paymentTypeId = paymentTypeId,
-            paymentTypeError = null,
-        )
-    }
-
-    fun updateAmount(amount: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(
-            amount = amount,
-            amountError = null,
-        )
-    }
-
-    fun updateAdditionalPayment(additionalPayment: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(additionalPayment = additionalPayment)
-    }
-
-    fun updateFees(fees: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(fees = fees)
-    }
-
-    fun updateRepaymentDate(date: Long) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(repaymentDate = date)
-    }
-
-    fun updateShowPaymentDetails(show: Boolean) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(showPaymentDetails = show)
-    }
-
-    fun updateAccountNumber(accountNumber: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(accountNumber = accountNumber)
-    }
-
-    fun updateExternalId(externalId: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(externalId = externalId)
-    }
-
-    fun updateChequeNumber(chequeNumber: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(chequeNumber = chequeNumber)
-    }
-
-    fun updateRoutingCode(routingCode: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(routingCode = routingCode)
-    }
-
-    fun updateReceiptNumber(receiptNumber: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(receiptNumber = receiptNumber)
-    }
-
-    fun updateBankNumber(bankNumber: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(bankNumber = bankNumber)
-    }
-
-    fun updateNote(note: String) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(note = note)
-    }
-
-    fun updateWaivePenalties(waive: Boolean) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(waivePenalties = waive)
-    }
-
-    fun setValidationErrors(amountError: String?, paymentTypeError: String?) {
-        mutableStateFlow.value = mutableStateFlow.value.copy(
-            amountError = amountError,
-            paymentTypeError = paymentTypeError,
-        )
-    }
 }
 
+@Immutable
 internal data class LoanRepaymentUiState(
     val isLoading: Boolean = false,
     val error: StringResource? = null,
+    val dialogState: DialogState? = null,
     val loanRepaymentTemplate: LoanRepaymentTemplateEntity? = null,
     val loanRepaymentExistsInDatabase: Boolean = false,
-    val hasCheckedDatabase: Boolean = false,
     val showPaymentDetails: Boolean = false,
     val showConfirmationDialog: Boolean = false,
     val clientName: String = "",
@@ -425,23 +369,44 @@ internal data class LoanRepaymentUiState(
     val waivePenalties: Boolean = false,
     val amountError: String? = null,
     val paymentTypeError: String? = null,
-)
+) {
+    val total: Double
+        get() {
+            val amountValue = amount.toDoubleOrNull() ?: 0.0
+            val additionalValue = additionalPayment.toDoubleOrNull() ?: 0.0
+            val feesValue = fees.toDoubleOrNull() ?: 0.0
+            val penaltiesValue = if (waivePenalties) {
+                0.0
+            } else {
+                loanRepaymentTemplate?.penaltyChargesPortion ?: 0.0
+            }
+            return amountValue + additionalValue + feesValue + penaltiesValue
+        }
+
+    sealed interface DialogState {
+        data class Success(val resourceId: Int?) : DialogState
+        data class Error(val message: String) : DialogState
+    }
+}
 
 internal sealed interface LoanRepaymentEvent {
-    data class PaymentSubmittedSuccessfully(
-        val response: LoanRepaymentResponseEntity?,
-    ) : LoanRepaymentEvent
+    data object NavigateBack : LoanRepaymentEvent
 }
 
 internal sealed interface LoanRepaymentAction {
-    data object LoadLoanRepaymentTemplate : LoanRepaymentAction
-    data object CheckDatabaseLoanRepayment : LoanRepaymentAction
-    data class SubmitPayment(val request: LoanRepaymentRequestEntity) : LoanRepaymentAction
+    data object RetryLoading : LoanRepaymentAction
+    data object ReviewPayment : LoanRepaymentAction
+    data object SubmitPayment : LoanRepaymentAction
+    data object DismissConfirmation : LoanRepaymentAction
+    data object CancelClicked : LoanRepaymentAction
+    data object PaymentSuccess : LoanRepaymentAction
+    data object DismissDialog : LoanRepaymentAction
     data class OnPaymentTypeChange(val paymentType: String) : LoanRepaymentAction
     data class OnPaymentTypeSelected(
         val paymentType: String,
         val paymentTypeId: Int,
     ) : LoanRepaymentAction
+
     data class OnAmountChange(val amount: String) : LoanRepaymentAction
     data class OnAdditionalPaymentChange(val additionalPayment: String) : LoanRepaymentAction
     data class OnFeesChange(val fees: String) : LoanRepaymentAction

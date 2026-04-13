@@ -9,23 +9,21 @@
  */
 package com.mifos.core.data.repository
 
-import com.mifos.core.common.utils.DataState
 import com.mifos.room.entities.accounts.loans.LoanRepaymentRequestEntity
 import com.mifos.room.entities.accounts.loans.LoanRepaymentResponseEntity
+import com.mifos.room.entities.accounts.loans.LoanWithAssociationsEntity
 import com.mifos.room.entities.templates.loans.LoanRepaymentTemplateEntity
-import kotlinx.coroutines.flow.Flow
 
-/**
- * Created by Aditya Gupta on 10/08/23.
- */
 interface LoanRepaymentRepository {
 
-    fun getLoanRepayTemplate(loanId: Int): Flow<DataState<LoanRepaymentTemplateEntity?>>
+    suspend fun getLoanRepayTemplate(loanId: Int): LoanRepaymentTemplateEntity?
 
     suspend fun submitPayment(
         loanId: Int,
         request: LoanRepaymentRequestEntity,
     ): LoanRepaymentResponseEntity
 
-    fun getDatabaseLoanRepaymentByLoanId(loanId: Int): Flow<DataState<LoanRepaymentRequestEntity?>>
+    suspend fun getDatabaseLoanRepaymentByLoanId(loanId: Int): LoanRepaymentRequestEntity?
+
+    suspend fun getLoanById(loanId: Int): LoanWithAssociationsEntity?
 }
