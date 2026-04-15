@@ -117,6 +117,7 @@ reviews:
 
         Flag:
         - Missing ScreenContent separation
+        - Passing multiple separate lambda functions for different UI interactions; consolidate them into the single `onAction` for Layer 2 (Stateful/Content Overload).
         - UI logic inside *Screen
         - Business logic inside Composables
         - Hardcoded strings instead of using string resources
