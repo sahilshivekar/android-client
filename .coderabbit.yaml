@@ -12,7 +12,8 @@ reviews:
   review_status: true
   commit_status: true
   collapse_walkthrough: false
-
+  auto_review:
+    base_branches: ["feat/MIFOSAC-759"]
   path_filters:
     - '**/*'
     - '!.github/**'
@@ -46,12 +47,13 @@ reviews:
           Required even for domain/data/refactor changes. Flag missing Jira link,
           missing/empty sections, or sections without media.
 
-  instructions: |
-    Focus on correctness, readability, and maintainability over cosmetic nitpicks.
-    - Avoid reviewing README, config, or asset files.
-    - Prioritize identifying bugs, performance issues, and architectural concerns.
-
   path_instructions:
+    - path: "**"
+      instructions: |
+        Focus on correctness, readability, and maintainability over cosmetic nitpicks.
+        - Avoid reviewing README, config, or asset files.
+        - Prioritize identifying bugs, performance issues, and architectural concerns.
+
     - path: "**/*ViewModel.kt"
       instructions: |
         Mifos MVI architecture rules:
