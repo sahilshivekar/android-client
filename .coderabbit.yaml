@@ -12,7 +12,8 @@ reviews:
   review_status: true
   commit_status: true
   collapse_walkthrough: false
-
+  auto_review:
+    base_branches: ["feat/MIFOSAC-759"]
   path_filters:
     - '**/*'
     - '!.github/**'
