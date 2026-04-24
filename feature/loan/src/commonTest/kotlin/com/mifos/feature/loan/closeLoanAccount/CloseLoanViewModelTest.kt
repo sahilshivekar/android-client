@@ -217,6 +217,25 @@ class CloseLoanViewModelTest {
     }
 
     @Test
+    fun onRetryLoadTemplate_afterFailure_recoversWhenUnderlyingCallSucceeds() = runTest {
+        fakeCloseLoanRepo.templateToReturn = DataState.Error(Exception("boom"), null)
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        assertNotNull(viewModel.stateFlow.value.loadError)
+
+        fakeCloseLoanRepo.templateToReturn = DataState.Success(
+            com.mifos.room.entities.templates.loans.LoanTransactionTemplate(),
+        )
+        viewModel.trySendAction(CloseLoanAction.OnRetryLoadTemplate)
+        advanceUntilIdle()
+
+        val state = viewModel.stateFlow.value
+        assertFalse(state.isTemplateLoading)
+        assertNull(state.loadError)
+    }
+
+    @Test
     fun onDismissError_clearsDialogState() = runTest {
         fakeCloseLoanRepo.closeShouldThrow = RuntimeException("boom")
         val viewModel = createViewModel()

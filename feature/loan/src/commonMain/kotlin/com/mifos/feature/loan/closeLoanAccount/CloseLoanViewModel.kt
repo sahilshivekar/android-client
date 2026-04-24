@@ -67,6 +67,7 @@ class CloseLoanViewModel(
             CloseLoanAction.OnDismissError -> mutableStateFlow.update {
                 it.copy(dialogState = null)
             }
+            CloseLoanAction.OnRetryLoadTemplate -> loadTemplate()
         }
     }
 
