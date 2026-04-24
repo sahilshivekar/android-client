@@ -18,12 +18,14 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.atStartOfDayIn
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -52,9 +54,12 @@ class CloseLoanViewModelTest {
     )
 
     @Test
-    fun initialState_isLoading() {
+    fun initialState_isTemplateLoading() {
         val viewModel = createViewModel()
-        assertEquals(CloseLoanUiState.Loading, viewModel.uiState.value)
+        val state = viewModel.stateFlow.value
+        assertTrue(state.isTemplateLoading)
+        assertNull(state.closedOnDateMillis)
+        assertEquals("", state.note)
     }
 
     @Test
@@ -64,100 +69,101 @@ class CloseLoanViewModelTest {
     }
 
     @Test
-    fun loadTemplate_whenTemplateAndLoanSucceed_emitsTemplateLoaded() = runTest {
+    fun loadTemplate_whenTemplateAndLoanSucceed_clearsLoadingAndKeepsNoError() = runTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value is CloseLoanUiState.TemplateLoaded)
+        val state = viewModel.stateFlow.value
+        assertFalse(state.isTemplateLoading)
+        assertNull(state.loadError)
     }
 
     @Test
-    fun loadTemplate_whenTemplateFails_emitsError() = runTest {
+    fun loadTemplate_whenTemplateFails_setsLoadError() = runTest {
         fakeCloseLoanRepo.templateToReturn = DataState.Error(Exception("Network error"), null)
 
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value is CloseLoanUiState.Error)
+        assertNotNull(viewModel.stateFlow.value.loadError)
     }
 
     @Test
-    fun loadTemplate_whenLoanFetchFails_emitsError() = runTest {
+    fun loadTemplate_whenLoanFetchFails_setsLoadError() = runTest {
         fakeLoanRepo.loanToReturn = DataState.Error(Exception("Not found"), null)
 
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value is CloseLoanUiState.Error)
+        assertNotNull(viewModel.stateFlow.value.loadError)
     }
 
     @Test
-    fun closeLoan_whenSuccessful_emitsClosedSuccessfully() = runTest {
+    fun onSubmit_whenNoDatePicked_isNoOp() = runTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.closeLoan(closedOnDate = "01 January 2025", note = "paid off")
+        viewModel.trySendAction(CloseLoanAction.OnSubmit)
         advanceUntilIdle()
 
-        assertEquals(CloseLoanUiState.ClosedSuccessfully, viewModel.uiState.value)
+        assertNull(fakeCloseLoanRepo.lastCloseRequest)
+        assertEquals(0, fakeCloseLoanRepo.syncCallCount)
     }
 
     @Test
-    fun closeLoan_whenCloseThrows_emitsError() = runTest {
+    fun onSubmit_whenDatePicked_sendsRequestAndClearsDialog() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.trySendAction(CloseLoanAction.OnDateChange(dateMillis("01 January 2025")))
+        viewModel.trySendAction(CloseLoanAction.OnNoteChange("paid off"))
+        viewModel.trySendAction(CloseLoanAction.OnSubmit)
+        advanceUntilIdle()
+
+        assertNotNull(fakeCloseLoanRepo.lastCloseRequest)
+        assertEquals(1, fakeCloseLoanRepo.syncCallCount)
+        assertNull(viewModel.stateFlow.value.dialogState)
+    }
+
+    @Test
+    fun onSubmit_whenCloseThrows_emitsErrorDialogAndSkipsSync() = runTest {
         fakeCloseLoanRepo.closeShouldThrow = RuntimeException("Server error")
 
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.closeLoan(closedOnDate = "01 January 2025", note = "")
+        viewModel.trySendAction(CloseLoanAction.OnDateChange(dateMillis("01 January 2025")))
+        viewModel.trySendAction(CloseLoanAction.OnSubmit)
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value is CloseLoanUiState.Error)
+        val state = viewModel.stateFlow.value
+        assertTrue(state.dialogState is CloseLoanState.DialogState.Error)
+        assertEquals(0, fakeCloseLoanRepo.syncCallCount)
     }
 
     @Test
-    fun closeLoan_whenSyncThrows_emitsError() = runTest {
+    fun onSubmit_whenSyncThrows_stillSucceedsBecauseCloseIsAuthoritative() = runTest {
         fakeCloseLoanRepo.syncShouldThrow = RuntimeException("Sync failed")
 
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.closeLoan(closedOnDate = "01 January 2025", note = "")
+        viewModel.trySendAction(CloseLoanAction.OnDateChange(dateMillis("01 January 2025")))
+        viewModel.trySendAction(CloseLoanAction.OnSubmit)
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value is CloseLoanUiState.Error)
-    }
-
-    @Test
-    fun closeLoan_callsSyncAfterClose() = runTest {
-        val viewModel = createViewModel()
-        advanceUntilIdle()
-
-        viewModel.closeLoan(closedOnDate = "01 January 2025", note = "")
-        advanceUntilIdle()
-
+        assertNull(viewModel.stateFlow.value.dialogState)
         assertEquals(1, fakeCloseLoanRepo.syncCallCount)
     }
 
     @Test
-    fun closeLoan_withNonBlankNote_includesNoteInRequest() = runTest {
+    fun onSubmit_withBlankNote_excludesNoteFromRequest() = runTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.closeLoan(closedOnDate = "01 January 2025", note = "early repayment")
-        advanceUntilIdle()
-
-        val request = fakeCloseLoanRepo.lastCloseRequest
-        assertNotNull(request)
-        assertEquals("early repayment", request["note"])
-    }
-
-    @Test
-    fun closeLoan_withBlankNote_excludesNoteFromRequest() = runTest {
-        val viewModel = createViewModel()
-        advanceUntilIdle()
-
-        viewModel.closeLoan(closedOnDate = "01 January 2025", note = "   ")
+        viewModel.trySendAction(CloseLoanAction.OnDateChange(dateMillis("01 January 2025")))
+        viewModel.trySendAction(CloseLoanAction.OnNoteChange("   "))
+        viewModel.trySendAction(CloseLoanAction.OnSubmit)
         advanceUntilIdle()
 
         val request = fakeCloseLoanRepo.lastCloseRequest
@@ -166,11 +172,27 @@ class CloseLoanViewModelTest {
     }
 
     @Test
-    fun closeLoan_requestContainsRequiredFields() = runTest {
+    fun onSubmit_withNonBlankNote_includesNoteInRequest() = runTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.closeLoan(closedOnDate = "15 March 2025", note = "")
+        viewModel.trySendAction(CloseLoanAction.OnDateChange(dateMillis("01 January 2025")))
+        viewModel.trySendAction(CloseLoanAction.OnNoteChange("early repayment"))
+        viewModel.trySendAction(CloseLoanAction.OnSubmit)
+        advanceUntilIdle()
+
+        val request = fakeCloseLoanRepo.lastCloseRequest
+        assertNotNull(request)
+        assertEquals("early repayment", request["note"])
+    }
+
+    @Test
+    fun onSubmit_requestContainsRequiredFields() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.trySendAction(CloseLoanAction.OnDateChange(dateMillis("15 March 2025")))
+        viewModel.trySendAction(CloseLoanAction.OnSubmit)
         advanceUntilIdle()
 
         val request = fakeCloseLoanRepo.lastCloseRequest
@@ -178,5 +200,64 @@ class CloseLoanViewModelTest {
         assertEquals("15 March 2025", request["closedOnDate"])
         assertEquals("dd MMMM yyyy", request["dateFormat"])
         assertEquals("en", request["locale"])
+    }
+
+    @Test
+    fun showAndHideDatePicker_togglesStateFlag() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.trySendAction(CloseLoanAction.OnShowDatePicker)
+        advanceUntilIdle()
+        assertTrue(viewModel.stateFlow.value.showDatePicker)
+
+        viewModel.trySendAction(CloseLoanAction.OnHideDatePicker)
+        advanceUntilIdle()
+        assertFalse(viewModel.stateFlow.value.showDatePicker)
+    }
+
+    @Test
+    fun onDismissError_clearsDialogState() = runTest {
+        fakeCloseLoanRepo.closeShouldThrow = RuntimeException("boom")
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.trySendAction(CloseLoanAction.OnDateChange(dateMillis("01 January 2025")))
+        viewModel.trySendAction(CloseLoanAction.OnSubmit)
+        advanceUntilIdle()
+        assertTrue(viewModel.stateFlow.value.dialogState is CloseLoanState.DialogState.Error)
+
+        viewModel.trySendAction(CloseLoanAction.OnDismissError)
+        advanceUntilIdle()
+        assertNull(viewModel.stateFlow.value.dialogState)
+    }
+
+    /**
+     * Builds a millis value that, when round-tripped through `ApiDateFormatter.formatForApi`,
+     * produces the given `dd MMMM yyyy` string. Uses the system default timezone so that it
+     * matches the formatter's conversion on the same machine.
+     */
+    private fun dateMillis(ddMMMMyyyy: String): Long {
+        val parts = ddMMMMyyyy.split(" ")
+        val day = parts[0].toInt()
+        val month = when (parts[1]) {
+            "January" -> 1
+            "February" -> 2
+            "March" -> 3
+            "April" -> 4
+            "May" -> 5
+            "June" -> 6
+            "July" -> 7
+            "August" -> 8
+            "September" -> 9
+            "October" -> 10
+            "November" -> 11
+            "December" -> 12
+            else -> error("bad month ${parts[1]}")
+        }
+        val year = parts[2].toInt()
+        return kotlinx.datetime.LocalDate(year, month, day)
+            .atStartOfDayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+            .toEpochMilliseconds()
     }
 }

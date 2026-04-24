@@ -44,4 +44,3 @@ val LoanModule = module {
     viewModelOf(::LoanRescheduleFormViewModel)
     viewModelOf(::CloseLoanViewModel)
 }
-
