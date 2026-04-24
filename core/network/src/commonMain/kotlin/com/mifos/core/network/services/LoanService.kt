@@ -181,7 +181,6 @@ interface LoanService {
         @Body request: Map<String, String>,
     ): HttpResponse
 
-
     /**
      * Loan Reschedule API Endpoints
      */

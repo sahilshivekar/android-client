@@ -24,6 +24,7 @@ import com.mifos.core.data.repository.ClientDetailsEditRepository
 import com.mifos.core.data.repository.ClientDetailsRepository
 import com.mifos.core.data.repository.ClientIdentifiersRepository
 import com.mifos.core.data.repository.ClientListRepository
+import com.mifos.core.data.repository.CloseLoanRepository
 import com.mifos.core.data.repository.CreateNewCenterRepository
 import com.mifos.core.data.repository.CreateNewClientRepository
 import com.mifos.core.data.repository.CreateNewGroupRepository
@@ -46,7 +47,6 @@ import com.mifos.core.data.repository.LoanAccountRepository
 import com.mifos.core.data.repository.LoanAccountSummaryRepository
 import com.mifos.core.data.repository.LoanChargeFormRepository
 import com.mifos.core.data.repository.LoanChargeRepository
-import com.mifos.core.data.repository.CloseLoanRepository
 import com.mifos.core.data.repository.LoanRepaymentRepository
 import com.mifos.core.data.repository.LoanRepaymentScheduleRepository
 import com.mifos.core.data.repository.LoanReschedulesRepository
@@ -94,6 +94,7 @@ import com.mifos.core.data.repositoryImp.ClientDetailsEditRepositoryImpl
 import com.mifos.core.data.repositoryImp.ClientDetailsRepositoryImp
 import com.mifos.core.data.repositoryImp.ClientIdentifiersRepositoryImp
 import com.mifos.core.data.repositoryImp.ClientListRepositoryImp
+import com.mifos.core.data.repositoryImp.CloseLoanRepositoryImp
 import com.mifos.core.data.repositoryImp.CreateNewCenterRepositoryImp
 import com.mifos.core.data.repositoryImp.CreateNewClientRepositoryImp
 import com.mifos.core.data.repositoryImp.CreateNewGroupRepositoryImp
@@ -116,7 +117,6 @@ import com.mifos.core.data.repositoryImp.LoanAccountRepositoryImp
 import com.mifos.core.data.repositoryImp.LoanAccountSummaryRepositoryImp
 import com.mifos.core.data.repositoryImp.LoanChargeFormRepositoryImp
 import com.mifos.core.data.repositoryImp.LoanChargeRepositoryImp
-import com.mifos.core.data.repositoryImp.CloseLoanRepositoryImp
 import com.mifos.core.data.repositoryImp.LoanRepaymentRepositoryImp
 import com.mifos.core.data.repositoryImp.LoanRepaymentScheduleRepositoryImp
 import com.mifos.core.data.repositoryImp.LoanReschedulesRepositoryImpl

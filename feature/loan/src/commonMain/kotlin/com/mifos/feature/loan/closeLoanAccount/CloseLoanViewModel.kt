@@ -14,77 +14,135 @@ import androidclient.feature.loan.generated.resources.feature_loan_close_failed
 import androidclient.feature.loan.generated.resources.feature_loan_close_failed_to_load_template
 import androidclient.feature.loan.generated.resources.feature_loan_profile_failed_to_load_loan
 import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.mifos.core.common.utils.ApiDateFormatter
 import com.mifos.core.common.utils.DataState
+import com.mifos.core.common.utils.DateHelper
 import com.mifos.core.data.repository.CloseLoanRepository
 import com.mifos.core.data.repository.LoanAccountSummaryRepository
-import com.mifos.room.entities.accounts.loans.LoanWithAssociationsEntity
-import com.mifos.room.entities.templates.loans.LoanTransactionTemplate
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.mifos.core.ui.util.BaseViewModel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel for the Close Loan Account screen.
+ *
+ * Loads the close-loan template and the current loan (to get the disbursement date used as the
+ * picker lower bound), then handles the submit flow via [CloseLoanAction.OnSubmit].
+ */
 class CloseLoanViewModel(
     savedStateHandle: SavedStateHandle,
     private val repository: CloseLoanRepository,
     private val loanRepository: LoanAccountSummaryRepository,
-) : ViewModel() {
+) : BaseViewModel<CloseLoanState, CloseLoanEvent, CloseLoanAction>(
+    initialState = CloseLoanState(),
+) {
 
-    private val args = savedStateHandle.toRoute<CloseLoanScreenRoute>()
-    val loanId: Int get() = args.loanId
+    private val route = savedStateHandle.toRoute<CloseLoanScreenRoute>()
 
-    private val _uiState = MutableStateFlow<CloseLoanUiState>(CloseLoanUiState.Loading)
-    val uiState: StateFlow<CloseLoanUiState> = _uiState.asStateFlow()
+    /** The loan id this screen is operating on. */
+    val loanId: Int get() = route.loanId
 
     init {
         loadTemplate()
     }
 
-    private fun loadTemplate() {
-        viewModelScope.launch {
-            _uiState.value = CloseLoanUiState.Loading
-            try {
-                repository.getCloseLoanTemplate(loanId).collect { templateState ->
-                    if (templateState is DataState.Success) {
-                        loanRepository.getLoanById(loanId).collect { loanState ->
-                            if (loanState is DataState.Success) {
-                                _uiState.value = CloseLoanUiState.TemplateLoaded(
-                                    template = templateState.data ?: LoanTransactionTemplate(),
-                                    loan = loanState.data
-                                )
-                            } else if (loanState is DataState.Error) {
-                                _uiState.value = CloseLoanUiState.Error(Res.string.feature_loan_profile_failed_to_load_loan)
-                            }
-                        }
-                    } else if (templateState is DataState.Error) {
-                        _uiState.value = CloseLoanUiState.Error(Res.string.feature_loan_close_failed_to_load_template)
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.value = CloseLoanUiState.Error(Res.string.feature_loan_close_failed_to_load_template)
+    override fun handleAction(action: CloseLoanAction) {
+        when (action) {
+            is CloseLoanAction.OnDateChange -> mutableStateFlow.update {
+                it.copy(closedOnDateMillis = action.millis, showDatePicker = false)
+            }
+            is CloseLoanAction.OnNoteChange -> mutableStateFlow.update {
+                it.copy(note = action.note)
+            }
+            CloseLoanAction.OnShowDatePicker -> mutableStateFlow.update {
+                it.copy(showDatePicker = true)
+            }
+            CloseLoanAction.OnHideDatePicker -> mutableStateFlow.update {
+                it.copy(showDatePicker = false)
+            }
+            CloseLoanAction.OnSubmit -> submitClose()
+            CloseLoanAction.OnDismissError -> mutableStateFlow.update {
+                it.copy(dialogState = null)
             }
         }
     }
 
-    fun closeLoan(closedOnDate: String, note: String) {
+    private fun loadTemplate() {
         viewModelScope.launch {
-            _uiState.value = CloseLoanUiState.Loading
-            try {
-                val request = buildMap<String, String> {
-                    put("closedOnDate", closedOnDate)
-                    put("dateFormat", "dd MMMM yyyy")
-                    put("locale", "en")
-                    if (note.isNotBlank()) put("note", note)
+            mutableStateFlow.update { it.copy(isTemplateLoading = true, loadError = null) }
+            val templateResult = repository.getCloseLoanTemplate(loanId)
+                .first { it !is DataState.Loading }
+            if (templateResult is DataState.Error) {
+                mutableStateFlow.update {
+                    it.copy(
+                        isTemplateLoading = false,
+                        loadError = Res.string.feature_loan_close_failed_to_load_template,
+                    )
                 }
-                repository.closeLoanAccount(loanId, request)
-                repository.syncLoanAccount(loanId)
-                _uiState.value = CloseLoanUiState.ClosedSuccessfully
-            } catch (e: Exception) {
-                _uiState.value = CloseLoanUiState.Error(Res.string.feature_loan_close_failed)
+                return@launch
             }
+
+            val loanResult = loanRepository.getLoanById(loanId)
+                .first { it !is DataState.Loading }
+            when (loanResult) {
+                is DataState.Success -> {
+                    val disbursement = loanResult.data
+                        ?.timeline
+                        ?.actualDisbursementDate
+                        ?.filterNotNull()
+                        ?.let { DateHelper.getDateAsLongFromList(it) }
+                    mutableStateFlow.update {
+                        it.copy(
+                            isTemplateLoading = false,
+                            disbursementDateMillis = disbursement,
+                        )
+                    }
+                }
+                is DataState.Error -> mutableStateFlow.update {
+                    it.copy(
+                        isTemplateLoading = false,
+                        loadError = Res.string.feature_loan_profile_failed_to_load_loan,
+                    )
+                }
+                DataState.Loading -> Unit
+            }
+        }
+    }
+
+    private fun submitClose() {
+        val closedOnMillis = state.closedOnDateMillis ?: return
+        viewModelScope.launch {
+            mutableStateFlow.update { it.copy(dialogState = CloseLoanState.DialogState.Submitting) }
+
+            val closedOnDate = ApiDateFormatter.formatForApi(closedOnMillis)
+            val noteValue = state.note
+            val request = buildMap<String, String> {
+                put("closedOnDate", closedOnDate)
+                put("dateFormat", ApiDateFormatter.DATE_FORMAT)
+                put("locale", ApiDateFormatter.LOCALE)
+                if (noteValue.isNotBlank()) put("note", noteValue)
+            }
+
+            try {
+                repository.closeLoanAccount(loanId, request)
+            } catch (e: Exception) {
+                mutableStateFlow.update {
+                    it.copy(
+                        dialogState = CloseLoanState.DialogState.Error(
+                            Res.string.feature_loan_close_failed,
+                        ),
+                    )
+                }
+                return@launch
+            }
+
+            // Close succeeded — surface success to the user immediately, then sync best-effort.
+            mutableStateFlow.update { it.copy(dialogState = null) }
+            sendEvent(CloseLoanEvent.CloseSuccess)
+            runCatching { repository.syncLoanAccount(loanId) }
         }
     }
 }

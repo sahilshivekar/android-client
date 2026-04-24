@@ -15,7 +15,9 @@ import com.mifos.core.data.repository.CloseLoanRepository
 import com.mifos.core.network.datamanager.DataManagerLoan
 import com.mifos.room.entities.templates.loans.LoanTransactionTemplate
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 
+/** Default [CloseLoanRepository] backed by [DataManagerLoan]. */
 class CloseLoanRepositoryImp(
     private val dataManagerLoan: DataManagerLoan,
 ) : CloseLoanRepository {
@@ -30,7 +32,6 @@ class CloseLoanRepositoryImp(
     }
 
     override suspend fun syncLoanAccount(loanId: Int) {
-        dataManagerLoan.syncLoanById(loanId).collect { }
+        dataManagerLoan.syncLoanById(loanId).first()
     }
 }
-
