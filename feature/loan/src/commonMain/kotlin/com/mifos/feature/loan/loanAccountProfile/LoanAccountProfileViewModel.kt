@@ -196,6 +196,7 @@ sealed interface LoanProfileAction {
     data object Approve : LoanProfileAction
     data object Repayment : LoanProfileAction
     data object Transfer : LoanProfileAction
+    data object CloseLoan : LoanProfileAction
 }
 
 sealed interface LoanAccountEvent {
