@@ -12,6 +12,7 @@ package com.mifos.feature.loan.loanAccountProfile.components
 import androidclient.core.ui.generated.resources.account_details
 import androidclient.core.ui.generated.resources.autorenew
 import androidclient.core.ui.generated.resources.charges
+import androidclient.core.ui.generated.resources.close_account
 import androidclient.core.ui.generated.resources.collateral
 import androidclient.core.ui.generated.resources.dashboard
 import androidclient.core.ui.generated.resources.design_services
@@ -130,7 +131,7 @@ sealed class LoanAccountProfileActionItem(
     data object CloseLoanAccount : LoanAccountProfileActionItem(
         title = LoanRes.string.feature_loan_profile_item_close_loan_title,
         subTitle = LoanRes.string.feature_loan_profile_item_close_loan_subtitle,
-        icon = UiRes.drawable.charges,
+        icon = UiRes.drawable.close_account,
     )
 }
 

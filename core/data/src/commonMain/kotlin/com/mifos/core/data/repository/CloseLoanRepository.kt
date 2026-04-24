@@ -13,12 +13,19 @@ import com.mifos.core.common.utils.DataState
 import com.mifos.room.entities.templates.loans.LoanTransactionTemplate
 import kotlinx.coroutines.flow.Flow
 
+/** Repository abstraction for the close-loan transaction flow. */
 interface CloseLoanRepository {
 
+    /** Fetches the close-loan template (`command=close`) for [loanId]. */
     fun getCloseLoanTemplate(loanId: Int): Flow<DataState<LoanTransactionTemplate?>>
 
+    /**
+     * Submits a close transaction for [loanId] with the given [request] payload.
+     *
+     * Expected keys: `closedOnDate`, `dateFormat`, `locale`, and optionally `note`.
+     */
     suspend fun closeLoanAccount(loanId: Int, request: Map<String, String>)
 
+    /** Re-fetches [loanId] so local state reflects the post-close status. */
     suspend fun syncLoanAccount(loanId: Int)
 }
-

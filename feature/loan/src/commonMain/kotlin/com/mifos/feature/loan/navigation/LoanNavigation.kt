@@ -115,9 +115,10 @@ fun NavGraphBuilder.loanDestination(
         onBackPressed = navController::popBackStack,
     )
 
-    closeLoanAccountScreen {
-        navController.popBackStack()
-    }
+    closeLoanAccountScreen(
+        navController = navController,
+        onBackPressed = navController::popBackStack,
+    )
 }
 
 fun NavGraphBuilder.loanApprovalScreen(
