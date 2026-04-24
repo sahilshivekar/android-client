@@ -15,6 +15,7 @@ import com.mifos.room.entities.templates.loans.LoanTransactionTemplate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
+/** Test double for [CloseLoanRepository]. Tests mutate the inputs; outputs are read-only. */
 class FakeCloseLoanRepository : CloseLoanRepository {
 
     var templateToReturn: DataState<LoanTransactionTemplate?> =
@@ -23,7 +24,9 @@ class FakeCloseLoanRepository : CloseLoanRepository {
     var syncShouldThrow: Throwable? = null
 
     var lastCloseRequest: Map<String, String>? = null
+        private set
     var syncCallCount: Int = 0
+        private set
 
     override fun getCloseLoanTemplate(loanId: Int): Flow<DataState<LoanTransactionTemplate?>> =
         flowOf(templateToReturn)
