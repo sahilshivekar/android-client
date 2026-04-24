@@ -26,6 +26,8 @@ import androidclient.feature.loan.generated.resources.feature_loan_profile_item_
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_account_details_title
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_charges_subtitle
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_charges_title
+import androidclient.feature.loan.generated.resources.feature_loan_profile_item_close_loan_subtitle
+import androidclient.feature.loan.generated.resources.feature_loan_profile_item_close_loan_title
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_collateral_subtitle
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_collateral_title
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_dashboard_subtitle
@@ -125,6 +127,11 @@ sealed class LoanAccountProfileActionItem(
         subTitle = LoanRes.string.feature_loan_profile_item_standing_instructions_subtitle,
         icon = UiRes.drawable.autorenew,
     )
+    data object CloseLoanAccount : LoanAccountProfileActionItem(
+        title = LoanRes.string.feature_loan_profile_item_close_loan_title,
+        subTitle = LoanRes.string.feature_loan_profile_item_close_loan_subtitle,
+        icon = UiRes.drawable.charges,
+    )
 }
 
 internal val loanProfileActionItems: ImmutableList<LoanAccountProfileActionItem> = persistentListOf(
@@ -141,4 +148,5 @@ internal val loanProfileActionItems: ImmutableList<LoanAccountProfileActionItem>
     LoanAccountProfileActionItem.Documents,
     LoanAccountProfileActionItem.Notes,
     LoanAccountProfileActionItem.StandingInstructions,
+    LoanAccountProfileActionItem.CloseLoanAccount,
 )
