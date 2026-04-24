@@ -64,4 +64,7 @@ sealed interface CloseLoanAction {
 
     /** User dismissed the error dialog. */
     data object OnDismissError : CloseLoanAction
+
+    /** User tapped retry after the initial template/loan load failed. */
+    data object OnRetryLoadTemplate : CloseLoanAction
 }
