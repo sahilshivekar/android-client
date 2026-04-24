@@ -14,10 +14,10 @@ package com.mifos.feature.loan.closeLoanAccount
 import androidclient.feature.loan.generated.resources.Res
 import androidclient.feature.loan.generated.resources.feature_loan_close_cancel
 import androidclient.feature.loan.generated.resources.feature_loan_close_closed_on
+import androidclient.feature.loan.generated.resources.feature_loan_close_disbursed_date_value
 import androidclient.feature.loan.generated.resources.feature_loan_close_note
 import androidclient.feature.loan.generated.resources.feature_loan_close_submit
 import androidclient.feature.loan.generated.resources.feature_loan_close_success
-import androidclient.feature.loan.generated.resources.feature_loan_disbursed_date
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_close_loan_title
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,8 +45,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mifos.core.common.utils.DateHelper
+import com.mifos.core.designsystem.component.LoadingDialogState
 import com.mifos.core.designsystem.component.MifosButton
 import com.mifos.core.designsystem.component.MifosDatePickerTextField
+import com.mifos.core.designsystem.component.MifosLoadingDialog
 import com.mifos.core.designsystem.component.MifosOutlinedTextField
 import com.mifos.core.designsystem.component.MifosScaffold
 import com.mifos.core.ui.components.MifosErrorComponent
@@ -72,6 +74,7 @@ internal fun CloseLoanScreen(
     val state by viewModel.stateFlow.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val successMessage = stringResource(Res.string.feature_loan_close_success)
+    val isSubmitting = state.dialogState is CloseLoanState.DialogState.Submitting
 
     EventsEffect(viewModel.eventFlow) { event ->
         when (event) {
@@ -84,7 +87,8 @@ internal fun CloseLoanScreen(
 
     MifosScaffold(
         title = stringResource(Res.string.feature_loan_profile_item_close_loan_title),
-        onBackPressed = onBackPressed,
+        // Block back while the close POST is in flight so we don't pop before the result arrives.
+        onBackPressed = { if (!isSubmitting) onBackPressed() },
         snackbarHostState = snackbarHostState,
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
@@ -93,8 +97,8 @@ internal fun CloseLoanScreen(
                 state.loadError != null -> MifosErrorComponent(
                     isNetworkConnected = true,
                     message = stringResource(state.loadError!!),
-                    isRetryEnabled = false,
-                    onRetry = {},
+                    isRetryEnabled = true,
+                    onRetry = { viewModel.trySendAction(CloseLoanAction.OnRetryLoadTemplate) },
                 )
                 else -> CloseLoanContent(
                     state = state,
@@ -120,6 +124,7 @@ private fun CloseLoanContent(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isSubmitting = state.dialogState is CloseLoanState.DialogState.Submitting
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = state.closedOnDateMillis,
         selectableDates = object : SelectableDates {
@@ -171,8 +176,10 @@ private fun CloseLoanContent(
 
         state.disbursementDateMillis?.let { millis ->
             Text(
-                text = stringResource(Res.string.feature_loan_disbursed_date) + ": " +
+                text = stringResource(
+                    Res.string.feature_loan_close_disbursed_date_value,
                     DateHelper.getDateAsStringFromLong(millis),
+                ),
                 style = KptTheme.typography.bodySmall,
                 color = KptTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = KptTheme.spacing.md),
@@ -194,6 +201,7 @@ private fun CloseLoanContent(
         ) {
             MifosButton(
                 modifier = Modifier.weight(1f),
+                enabled = !isSubmitting,
                 onClick = onCancel,
             ) {
                 Text(text = stringResource(Res.string.feature_loan_close_cancel))
@@ -216,7 +224,7 @@ private fun CloseLoanDialogs(
     onDismissError: () -> Unit,
 ) {
     when (val dialog = state.dialogState) {
-        CloseLoanState.DialogState.Submitting -> MifosProgressIndicator()
+        CloseLoanState.DialogState.Submitting -> MifosLoadingDialog(LoadingDialogState.Shown)
         is CloseLoanState.DialogState.Error -> AlertDialog(
             onDismissRequest = onDismissError,
             confirmButton = {
