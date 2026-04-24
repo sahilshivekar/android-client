@@ -86,6 +86,7 @@ internal fun LoanAccountProfileScreen(
     navigateToReschedules: (Int) -> Unit,
     navigateToNotes: (Int) -> Unit,
     navigateToTransferScreen: (loanId: Int, accountNumber: String, clientId: Int, currencyCode: String, officeId: Int) -> Unit,
+    navigateToCloseLoan: (loanId: Int) -> Unit,
     navController: NavController,
     modifier: Modifier = Modifier,
     viewModel: LoanAccountProfileViewModel = koinViewModel(),
@@ -111,6 +112,10 @@ internal fun LoanAccountProfileScreen(
                             account.clientOfficeId,
                         )
                     }
+                    LoanProfileAction.CloseLoan -> {
+                        val account = state.loanAccount ?: return@EventsEffect
+                        navigateToCloseLoan(account.id)
+                    }
                 }
             }
             is LoanAccountEvent.NavigateToDetail -> {
@@ -123,6 +128,7 @@ internal fun LoanAccountProfileScreen(
                     LoanAccountProfileActionItem.Documents -> navigateToDocuments(loanId)
                     LoanAccountProfileActionItem.Reschedules -> navigateToReschedules(loanId)
                     LoanAccountProfileActionItem.Notes -> navigateToNotes(loanId)
+                    LoanAccountProfileActionItem.CloseLoanAccount -> navigateToCloseLoan(loanId)
                     else -> { }
                 }
             }
@@ -200,7 +206,13 @@ private fun LoanAccountContent(
 
         Spacer(Modifier.height(DesignToken.padding.medium))
 
-        loanProfileActionItems.forEach { item ->
+        loanProfileActionItems.filter { item ->
+            if (item is LoanAccountProfileActionItem.CloseLoanAccount) {
+                state.loanAccount?.status?.active == true
+            } else {
+                true
+            }
+        }.forEach { item ->
             MifosRowCard(
                 title = stringResource(item.title),
                 imageVector = item.icon,
