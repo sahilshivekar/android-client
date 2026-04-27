@@ -122,6 +122,7 @@ class CloseLoanViewModel(
             val noteValue = state.note
             val request = buildMap<String, String> {
                 put("closedOnDate", closedOnDate)
+                put("transactionDate", closedOnDate)
                 put("dateFormat", ApiDateFormatter.DATE_FORMAT)
                 put("locale", ApiDateFormatter.LOCALE)
                 if (noteValue.isNotBlank()) put("note", noteValue)
@@ -140,10 +141,12 @@ class CloseLoanViewModel(
                 return@launch
             }
 
-            // Close succeeded — surface success to the user immediately, then sync best-effort.
+            // Sync before emitting CloseSuccess so it completes before viewModelScope is cancelled
+            // by navigation. Failure is swallowed — the profile screen refreshes via
+            // LOAN_CLOSED_RESULT_KEY regardless.
+            runCatching { repository.syncLoanAccount(loanId) }
             mutableStateFlow.update { it.copy(dialogState = null) }
             sendEvent(CloseLoanEvent.CloseSuccess)
-            runCatching { repository.syncLoanAccount(loanId) }
         }
     }
 }
