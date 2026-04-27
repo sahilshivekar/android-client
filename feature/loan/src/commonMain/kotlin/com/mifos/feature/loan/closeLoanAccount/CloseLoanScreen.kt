@@ -16,6 +16,7 @@ import androidclient.feature.loan.generated.resources.feature_loan_close_cancel
 import androidclient.feature.loan.generated.resources.feature_loan_close_closed_on
 import androidclient.feature.loan.generated.resources.feature_loan_close_disbursed_date_value
 import androidclient.feature.loan.generated.resources.feature_loan_close_note
+import androidclient.feature.loan.generated.resources.feature_loan_close_ok
 import androidclient.feature.loan.generated.resources.feature_loan_close_submit
 import androidclient.feature.loan.generated.resources.feature_loan_close_success
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_close_loan_title
@@ -42,7 +43,9 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mifos.core.common.utils.DateHelper
 import com.mifos.core.designsystem.component.LoadingDialogState
@@ -54,6 +57,7 @@ import com.mifos.core.designsystem.component.MifosScaffold
 import com.mifos.core.ui.components.MifosErrorComponent
 import com.mifos.core.ui.components.MifosProgressIndicator
 import com.mifos.core.ui.util.EventsEffect
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import template.core.base.designsystem.theme.KptTheme
@@ -75,11 +79,16 @@ internal fun CloseLoanScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val successMessage = stringResource(Res.string.feature_loan_close_success)
     val isSubmitting = state.dialogState is CloseLoanState.DialogState.Submitting
+    val scope = rememberCoroutineScope()
+
+    // Block system back gesture while submission is in flight.
+    BackHandler(enabled = isSubmitting) {}
 
     EventsEffect(viewModel.eventFlow) { event ->
         when (event) {
             CloseLoanEvent.CloseSuccess -> {
-                snackbarHostState.showSnackbar(successMessage)
+                // Fire-and-forget so navigation isn't blocked waiting for the snackbar to dismiss.
+                scope.launch { snackbarHostState.showSnackbar(successMessage) }
                 onCloseSuccess()
             }
         }
@@ -87,7 +96,6 @@ internal fun CloseLoanScreen(
 
     MifosScaffold(
         title = stringResource(Res.string.feature_loan_profile_item_close_loan_title),
-        // Block back while the close POST is in flight so we don't pop before the result arrives.
         onBackPressed = { if (!isSubmitting) onBackPressed() },
         snackbarHostState = snackbarHostState,
     ) { paddingValues ->
@@ -145,7 +153,7 @@ private fun CloseLoanContent(
                             onAction(CloseLoanAction.OnDateChange(millis))
                         } ?: onAction(CloseLoanAction.OnHideDatePicker)
                     },
-                ) { Text(stringResource(Res.string.feature_loan_close_submit)) }
+                ) { Text(stringResource(Res.string.feature_loan_close_ok)) }
             },
             dismissButton = {
                 TextButton(onClick = { onAction(CloseLoanAction.OnHideDatePicker) }) {
@@ -229,7 +237,7 @@ private fun CloseLoanDialogs(
             onDismissRequest = onDismissError,
             confirmButton = {
                 TextButton(onClick = onDismissError) {
-                    Text(stringResource(Res.string.feature_loan_close_submit))
+                    Text(stringResource(Res.string.feature_loan_close_ok))
                 }
             },
             text = { Text(stringResource(dialog.message)) },

@@ -465,6 +465,7 @@
     <string name="feature_loan_close_note">Note</string>
     <string name="feature_loan_close_submit">Submit</string>
     <string name="feature_loan_close_cancel">Cancel</string>
+    <string name="feature_loan_close_ok">OK</string>
     <string name="feature_loan_close_retry">Retry</string>
     <string name="feature_loan_close_success">Loan account closed successfully</string>
     <string name="feature_loan_close_failed">Failed to close loan account</string>
