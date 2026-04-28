@@ -23,6 +23,7 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.components.resources)
             implementation(compose.ui)
+            implementation(libs.ui.backhandler)
             implementation(projects.core.domain)
             implementation(projects.core.ui)
             implementation(libs.kotlinx.serialization.json)
