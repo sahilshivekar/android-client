@@ -10,7 +10,12 @@
 package com.mifos.core.data.repository
 
 import com.mifos.core.common.utils.DataState
+import com.mifos.core.model.entity.accounts.loan.LoanForAssignOfficer
+import com.mifos.core.model.entity.accounts.loan.StaffOption
+import com.mifos.core.model.objects.account.loan.AssignLoanOfficerRequest
+import com.mifos.core.network.GenericResponse
 import com.mifos.room.entities.accounts.loans.LoanWithAssociationsEntity
+import com.mifos.room.entities.organisation.StaffEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -19,4 +24,10 @@ import kotlinx.coroutines.flow.Flow
 interface LoanAccountSummaryRepository {
 
     fun getLoanById(loanId: Int): Flow<DataState<LoanWithAssociationsEntity?>>
+    fun getLoanForAssignOfficer(loanId: Int): Flow<DataState<LoanForAssignOfficer?>>
+
+    fun getLoanOfficersForOffice(officeId: Int): Flow<DataState<List<StaffEntity>>>
+    fun getLoanOfficerStaffOptions(officeId: Int): Flow<DataState<List<StaffOption>>>
+
+    suspend fun assignLoanOfficer(loanId: Int, request: AssignLoanOfficerRequest): DataState<GenericResponse>
 }
