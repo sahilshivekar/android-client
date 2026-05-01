@@ -49,7 +49,7 @@ reviews:
           - Use present tense, lowercase, concise
           - Scope should reflect module/feature (loan, auth, ui) if identifiable
           - Do NOT include JIRA ticket numbers/IDs (e.g., MIFOSAC-123) in the title
-    
+        
         If the title is not meaningful or not in the correct format:
           - Suggest a better title
           - Base it on:
@@ -145,7 +145,7 @@ reviews:
     - path: "**/*.kt"
       instructions: |
         Additional Code Review Guidelines:
-      
+        
         1. Null Safety & Stability
         - Avoid using `!!` operator
         - Handle null cases explicitly using safe calls or proper state handling

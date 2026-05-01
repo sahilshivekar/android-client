@@ -17,7 +17,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class LoanAccountRoute(
-    val loanId: Int = -1,
+    val loanId: Int,
 )
 
 fun NavGraphBuilder.loanProfileAccountDestination(
@@ -29,6 +29,7 @@ fun NavGraphBuilder.loanProfileAccountDestination(
     navigateToDocuments: (Int) -> Unit,
     navigateToReschedules: (Int) -> Unit,
     navigateToNotes: (Int) -> Unit,
+    navigateToLoanAction: (Int) -> Unit,
     approveLoan: (Int, LoanWithAssociationsEntity) -> Unit,
     onRepaymentClick: (LoanWithAssociationsEntity) -> Unit,
     navigateToTransferScreen: (loanId: Int, accountNumber: String, clientId: Int, currencyCode: String, officeId: Int) -> Unit,
@@ -46,6 +47,7 @@ fun NavGraphBuilder.loanProfileAccountDestination(
             approveLoan = approveLoan,
             onRepaymentClick = onRepaymentClick,
             navigateToTransferScreen = navigateToTransferScreen,
+            navigateToLoanAction = navigateToLoanAction,
         )
     }
 }
