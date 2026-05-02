@@ -12,6 +12,10 @@ package com.mifos.room
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.execSQL
 import com.mifos.room.dao.CenterDao
 import com.mifos.room.dao.ChargeDao
 import com.mifos.room.dao.ClientDao
@@ -169,6 +173,57 @@ actual abstract class MifosDatabase : RoomDatabase() {
     actual abstract val surveyDao: SurveyDao
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 3
+
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `ClientAddress` (
+                        `addressId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `clientId` INTEGER,
+                        `addressType` TEXT,
+                        `addressTypeId` INTEGER,
+                        `isActive` INTEGER NOT NULL DEFAULT 0,
+                        `addressLine1` TEXT,
+                        `addressLine2` TEXT,
+                        `addressLine3` TEXT,
+                        `city` TEXT,
+                        `stateProvinceId` INTEGER,
+                        `countryName` TEXT,
+                        `stateName` TEXT,
+                        `countryId` INTEGER,
+                        `postalCode` TEXT
+                    )
+                    """.trimIndent(),
+                )
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `ClientIdentifier` (
+                        `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `id` INTEGER,
+                        `clientId` INTEGER,
+                        `documentKey` TEXT,
+                        `documentTypeName` TEXT,
+                        `documentTypeId` INTEGER,
+                        `description` TEXT,
+                        `status` TEXT
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    ALTER TABLE LoanRepaymentRequestEntity 
+                    ADD COLUMN externalId TEXT
+                    """.trimIndent(),
+                )
+            }
+        }
     }
 }
