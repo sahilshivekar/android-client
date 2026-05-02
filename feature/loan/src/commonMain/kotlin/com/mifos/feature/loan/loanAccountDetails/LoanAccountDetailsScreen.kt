@@ -56,7 +56,7 @@ internal fun LoanAccountDetailsScreenRoute(
     LoanAccountDetailsScreen(
         state = state,
         navController = navController,
-        onRetry = remember(viewModel) { { viewModel.trySendAction(LoanAccountDetailsAction.OnRetry) } },
+        onAction = remember(viewModel) { { viewModel.trySendAction(it) } },
     )
 }
 
@@ -64,7 +64,7 @@ internal fun LoanAccountDetailsScreenRoute(
 internal fun LoanAccountDetailsScreen(
     state: LoanAccountDetailsState,
     navController: NavController,
-    onRetry: () -> Unit,
+    onAction: (LoanAccountDetailsAction) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -84,7 +84,7 @@ internal fun LoanAccountDetailsScreen(
         } else {
             LoanAccountDialogs(
                 state = state,
-                onRetry = onRetry,
+                onAction = onAction,
             )
         }
     }
@@ -93,7 +93,7 @@ internal fun LoanAccountDetailsScreen(
 @Composable
 private fun LoanAccountDialogs(
     state: LoanAccountDetailsState,
-    onRetry: () -> Unit,
+    onAction: (LoanAccountDetailsAction) -> Unit,
 ) {
     when (state.dialogState) {
         is LoanAccountDetailsState.DialogState.Loading -> MifosProgressIndicator()
@@ -102,11 +102,11 @@ private fun LoanAccountDialogs(
                 isNetworkConnected = state.networkConnection,
                 message = stringResource(state.dialogState.message),
                 isRetryEnabled = true,
-                onRetry = onRetry,
+                onRetry = { onAction(LoanAccountDetailsAction.OnRetry) },
             )
         }
         null -> Unit
-    }
+
 }
 
 @Composable

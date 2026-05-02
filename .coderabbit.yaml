@@ -93,38 +93,37 @@ reviews:
     - path: "**/*Screen.kt"
       instructions: |
         Screen architecture rules:
-        - *ScreenContent:
-          - render UI from state
-          - trigger actions via a consolidated onAction lambda
-          - MUST NOT pass multiple separate lambda functions for different UI interactions; 
-            prefer a single onAction: (FeatureAction) -> Unit.
-        
-        Each screen must follow 2-layer structure:
-        1. Layer 1 (Stateless/Entry Overload):
-           - Function Name: Typically `*Screen`.
-           - Responsibilities: Inject ViewModel (e.g., `koinViewModel`), take navigation lambdas, and collect the `StateFlow`.
+
+        Each screen must follow a 2-layer structure:
+        1. Layer 1 (Entry/Route Composable):
+           - Function Name: Typically `*ScreenRoute` or the entry-point composable.
+           - Responsibilities: Inject ViewModel (e.g., `koinViewModel`), take navigation lambdas, collect the `StateFlow`, and handle ViewModel events.
            - Logic: Should only handle ViewModel interaction, state collection, and triggering navigation in response to ViewModel events.
 
-        2. Layer 2 (Stateful/Content Overload):
-           - Function Name: `*Screen` or `*ScreenContent`.
+        2. Layer 2 (Stateful/Content Composable — `*Screen` or `*ScreenContent`):
            - Parameters: MUST only take `state` (the UI state object) and a single `onAction` lambda (e.g., `onAction: (FeatureAction) -> Unit`).
            - Responsibilities: Render the UI based strictly on the provided `state`.
-           - Rule: Avoid passing multiple separate lambda functions for different UI interactions; consolidate them into the single `onAction`.
+           - Rule: MUST NOT pass multiple separate lambda functions for different UI interactions; consolidate them into the single `onAction`.
            - Constraint: Must NOT contain any business logic or ViewModel/Navigation references.
-        
+
+        Internal/private helper composables (e.g., dialogs, sections, sub-components):
+        - These are NOT subject to the single `onAction` rule.
+        - They may accept specific, focused lambdas (e.g., `onRetry: () -> Unit`) or a narrowed `onAction` as appropriate.
+        - However, they must NOT be passed the ViewModel or navigation controllers directly.
+
         UI consistency:
         - Avoid hardcoded values (dp, sp, padding, fontSize, colors)
         - Use DesignToken, KptTheme, AppColors, MifosTypography for spacing, typography, and colors
-        
+
         Code quality:
         - Keep Composables small and readable
         - Avoid deeply nested UI
 
         Flag:
-        - Missing ScreenContent separation
-        - Passing multiple separate lambda functions for different UI interactions; consolidate them into the single `onAction` for Layer 2 (Stateful/Content Overload).
-        - UI logic inside *Screen
-        - Business logic inside Composables
+        - Missing Layer 2 (`*Screen`/`*ScreenContent`) separation from the entry-point composable
+        - Layer 2 (`*Screen`/`*ScreenContent`) receiving multiple separate lambdas instead of a single `onAction`
+        - UI logic inside the entry-point composable
+        - Business logic inside any Composable
         - Hardcoded strings instead of using string resources
         - Hardcoded dp/sp values
         - Direct styling instead of using DesignToken or KptTheme
