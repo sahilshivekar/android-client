@@ -12,6 +12,7 @@ package com.mifos.feature.loan.loanAccountProfile.components
 import androidclient.core.ui.generated.resources.account_details
 import androidclient.core.ui.generated.resources.autorenew
 import androidclient.core.ui.generated.resources.charges
+import androidclient.core.ui.generated.resources.close_account
 import androidclient.core.ui.generated.resources.collateral
 import androidclient.core.ui.generated.resources.dashboard
 import androidclient.core.ui.generated.resources.design_services
@@ -26,6 +27,8 @@ import androidclient.feature.loan.generated.resources.feature_loan_profile_item_
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_account_details_title
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_charges_subtitle
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_charges_title
+import androidclient.feature.loan.generated.resources.feature_loan_profile_item_close_loan_subtitle
+import androidclient.feature.loan.generated.resources.feature_loan_profile_item_close_loan_title
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_collateral_subtitle
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_collateral_title
 import androidclient.feature.loan.generated.resources.feature_loan_profile_item_dashboard_subtitle
@@ -125,6 +128,11 @@ sealed class LoanAccountProfileActionItem(
         subTitle = LoanRes.string.feature_loan_profile_item_standing_instructions_subtitle,
         icon = UiRes.drawable.autorenew,
     )
+    data object CloseLoanAccount : LoanAccountProfileActionItem(
+        title = LoanRes.string.feature_loan_profile_item_close_loan_title,
+        subTitle = LoanRes.string.feature_loan_profile_item_close_loan_subtitle,
+        icon = UiRes.drawable.close_account,
+    )
 }
 
 internal val loanProfileActionItems: ImmutableList<LoanAccountProfileActionItem> = persistentListOf(
@@ -141,4 +149,5 @@ internal val loanProfileActionItems: ImmutableList<LoanAccountProfileActionItem>
     LoanAccountProfileActionItem.Documents,
     LoanAccountProfileActionItem.Notes,
     LoanAccountProfileActionItem.StandingInstructions,
+    LoanAccountProfileActionItem.CloseLoanAccount,
 )

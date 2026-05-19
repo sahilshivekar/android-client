@@ -169,6 +169,19 @@ interface LoanService {
     ): HttpResponse
 
     /**
+     * Close a loan account.
+     *
+     * @param loanId The ID of the loan to close
+     * @param request The close loan request payload (closedOnDate, note, locale, dateFormat)
+     * @return HttpResponse to check status and handle error/success
+     */
+    @POST(APIEndPoint.LOANS + "/{loanId}/transactions?command=close")
+    suspend fun closeLoanAccount(
+        @Path("loanId") loanId: Int,
+        @Body request: Map<String, String>,
+    ): HttpResponse
+
+    /**
      * Loan Reschedule API Endpoints
      */
 

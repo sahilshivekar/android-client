@@ -358,6 +358,20 @@ class DataManagerLoan(
     }
 
     /**
+     * Close a loan account.
+     *
+     * @param loanId The ID of the loan to close
+     * @param request The close loan request payload
+     */
+    suspend fun closeLoanAccount(loanId: Int, request: Map<String, String>) {
+        val response = mBaseApiManager.loanService.closeLoanAccount(loanId, request)
+        if (!response.status.isSuccess()) {
+            val errorMessage = extractErrorMessage(response)
+            throw IllegalStateException(errorMessage)
+        }
+    }
+
+    /**
      * Calculate loan repayment schedule without creating the loan.
      * Used to preview the schedule before submitting the loan application.
      *

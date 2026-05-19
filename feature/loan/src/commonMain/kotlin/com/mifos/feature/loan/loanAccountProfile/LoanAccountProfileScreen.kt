@@ -39,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -61,6 +62,7 @@ import com.mifos.core.ui.components.MifosProgressIndicator
 import com.mifos.core.ui.components.MifosRowCard
 import com.mifos.core.ui.util.EventsEffect
 import com.mifos.core.ui.util.TextUtil
+import com.mifos.feature.loan.closeLoanAccount.LOAN_CLOSED_RESULT_KEY
 import com.mifos.feature.loan.loanAccountProfile.components.LoanAccountProfileActionItem
 import com.mifos.feature.loan.loanAccountProfile.components.loanProfileActionItems
 import com.mifos.room.entities.accounts.loans.LoanStatusEntity
@@ -86,11 +88,24 @@ internal fun LoanAccountProfileScreen(
     navigateToReschedules: (Int) -> Unit,
     navigateToNotes: (Int) -> Unit,
     navigateToTransferScreen: (loanId: Int, accountNumber: String, clientId: Int, currencyCode: String, officeId: Int) -> Unit,
+    navigateToCloseLoan: (loanId: Int) -> Unit,
     navController: NavController,
     modifier: Modifier = Modifier,
     viewModel: LoanAccountProfileViewModel = koinViewModel(),
 ) {
     val state by viewModel.stateFlow.collectAsStateWithLifecycle()
+
+    val currentEntry = navController.currentBackStackEntry
+    val loanClosedFlow = remember(currentEntry) {
+        currentEntry?.savedStateHandle?.getStateFlow(LOAN_CLOSED_RESULT_KEY, false)
+    }
+    val loanClosed = loanClosedFlow?.collectAsStateWithLifecycle()?.value == true
+    LaunchedEffect(loanClosed) {
+        if (loanClosed) {
+            viewModel.trySendAction(LoanAccountAction.OnRefresh)
+            currentEntry?.savedStateHandle?.set(LOAN_CLOSED_RESULT_KEY, false)
+        }
+    }
 
     EventsEffect(viewModel.eventFlow) { event ->
         when (event) {
@@ -101,16 +116,14 @@ internal fun LoanAccountProfileScreen(
                 when (event.action) {
                     LoanProfileAction.Approve -> approveLoan(account.id, account)
                     LoanProfileAction.Repayment -> onRepaymentClick(account)
-                    LoanProfileAction.Transfer -> {
-                        val account = state.loanAccount ?: return@EventsEffect
-                        navigateToTransferScreen(
-                            account.id,
-                            account.accountNo,
-                            account.clientId,
-                            account.currency.code ?: "N/A",
-                            account.clientOfficeId,
-                        )
-                    }
+                    LoanProfileAction.Transfer -> navigateToTransferScreen(
+                        account.id,
+                        account.accountNo,
+                        account.clientId,
+                        account.currency.code ?: "N/A",
+                        account.clientOfficeId,
+                    )
+                    LoanProfileAction.CloseLoan -> navigateToCloseLoan(account.id)
                 }
             }
             is LoanAccountEvent.NavigateToDetail -> {
@@ -123,6 +136,7 @@ internal fun LoanAccountProfileScreen(
                     LoanAccountProfileActionItem.Documents -> navigateToDocuments(loanId)
                     LoanAccountProfileActionItem.Reschedules -> navigateToReschedules(loanId)
                     LoanAccountProfileActionItem.Notes -> navigateToNotes(loanId)
+                    LoanAccountProfileActionItem.CloseLoanAccount -> navigateToCloseLoan(loanId)
                     else -> { }
                 }
             }
@@ -200,7 +214,13 @@ private fun LoanAccountContent(
 
         Spacer(Modifier.height(DesignToken.padding.medium))
 
-        loanProfileActionItems.forEach { item ->
+        loanProfileActionItems.filter { item ->
+            if (item is LoanAccountProfileActionItem.CloseLoanAccount) {
+                state.loanAccount?.status?.active == true
+            } else {
+                true
+            }
+        }.forEach { item ->
             MifosRowCard(
                 title = stringResource(item.title),
                 imageVector = item.icon,
