@@ -14,8 +14,9 @@ import androidclient.feature.loan.generated.resources.account_number
 import androidclient.feature.loan.generated.resources.disbursement_date
 import androidclient.feature.loan.generated.resources.feature_error_network_not_available
 import androidclient.feature.loan.generated.resources.feature_loan_account_created_successfully
+import androidclient.feature.loan.generated.resources.feature_loan_not_available_abbr
 import androidclient.feature.loan.generated.resources.installment_paid
-import androidclient.feature.loan.generated.resources.principle_paid_off
+import androidclient.feature.loan.generated.resources.principal_paid_off
 import androidclient.feature.loan.generated.resources.total_installments
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -923,12 +924,13 @@ internal class NewLoanAccountViewModel(
                     }
 
                     is DataState.Success -> {
+                        val naStr = getString(Res.string.feature_loan_not_available_abbr)
                         val schedulerDetails = mapOf(
                             Res.string.account_number to (state.accountNo),
-                            Res.string.disbursement_date to state.expectedDisbursementDate.ifEmpty { "N/A" },
-                            Res.string.principle_paid_off to CurrencyFormatter.format(
+                            Res.string.disbursement_date to state.expectedDisbursementDate.ifEmpty { naStr },
+                            Res.string.principal_paid_off to CurrencyFormatter.format(
                                 balance = state.repaymentSchedule.totalPrincipalPaid,
-                                currencyCode = dataState.data.currency?.code ?: "N/A",
+                                currencyCode = dataState.data.currency?.code ?: naStr,
                                 maximumFractionDigits = dataState.data.currency?.decimalPlaces ?: 0,
                             ),
                             Res.string.installment_paid to "0",
