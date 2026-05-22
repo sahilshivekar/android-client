@@ -827,14 +827,14 @@ object ForeignKeyAction {
     const val NO_ACTION = 1
 
     /** Prevent the operation if it would violate the foreign key constraint */
-    const val RESTRICT = 2
+    const val SET_NULL = 2
 
     /** Set the foreign key column to NULL when the referenced key is deleted/updated */
-    const val SET_NULL = 3
+    const val RESTRICT = 3
 
     /** Set the foreign key column to its default value when the referenced key is deleted/updated */
-    const val SET_DEFAULT = 4
+    const val CASCADE = 4
 
     /** Cascade the delete/update operation to the referencing rows */
-    const val CASCADE = 5
+    const val SET_DEFAULT = 5
 }
